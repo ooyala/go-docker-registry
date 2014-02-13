@@ -1,0 +1,9 @@
+[submodule "vendor/src/github.com/crowdmob/goamz"]
+	path = vendor/src/github.com/crowdmob/goamz
+	url = ssh://git@github.com/crowdmob/goamz
+[submodule "vendor/src/github.com/gorilla/context"]
+	path = vendor/src/github.com/gorilla/context
+	url = ssh://git@github.com/gorilla/context
+[submodule "vendor/src/github.com/gorilla/mux"]
+	path = vendor/src/github.com/gorilla/mux
+	url = ssh://git@github.com/gorilla/mux
