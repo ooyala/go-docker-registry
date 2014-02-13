@@ -15,8 +15,28 @@ init: clean
 build: init
 	@go build -o bin/registry registry.go
 
-test:
-	@echo "I don't normally test my code, but when I do, I do it on production."
+test: clean
+ifdef TEST_PACKAGE
+	@echo "Testing $$TEST_PACKAGE..."
+	@go test -cover $$TEST_FLAGS $$TEST_PACKAGE
+else
+	@for p in `find ./src -type f -name "*.go" |sed 's-\./src/\(.*\)/.*-\1-' |sort -u`; do \
+		echo "Testing $$p..."; \
+		go test -cover $$TEST_FLAGS $$p || exit 1; \
+	done
+	@echo
+	@echo "ok."
+endif
+
+annotate:
+ifdef TEST_PACKAGE
+	@echo "Annotating $$TEST_PACKAGE..."
+	@go test -coverprofile=cover.out $$TEST_FLAGS $$TEST_PACKAGE
+	@go tool cover -html=cover.out
+	@rm -f cover.out
+else
+	@echo "Specify package!"
+endif
 
 fmt:
 	@gofmt -l -w registry.go

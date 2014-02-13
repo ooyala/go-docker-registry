@@ -6,6 +6,8 @@ import (
 )
 
 type Storage interface{
+	init() error
+
 	Get(string) ([]byte, error)
 	Put(string, []byte) error
 	GetReader(string) (io.ReadCloser, error)
