@@ -7,18 +7,24 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"registry/config"
+	"registry/storage"
 )
 
+type Config struct {
+	Addr           string              `json:"addr"`
+	DefaultHeaders map[string][]string `json:"default_headers"`
+}
+
 type RegistryAPI struct {
-	Config *config.Config
+	*Config
+	Storage storage.Storage
 }
 
-func New(cfg *config.Config) *RegistryAPI {
-	return &RegistryAPI{cfg}
+func New(cfg *Config, storage storage.Storage) *RegistryAPI {
+	return &RegistryAPI{Config: cfg, Storage: storage}
 }
 
-func (a *RegistryAPI) Serve() error {
+func (a *RegistryAPI) ListenAndServe() error {
 	r := mux.NewRouter()
 	r.HandleFunc("/", a.HomeHandler)
 

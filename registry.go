@@ -5,6 +5,7 @@ import (
 	"log"
 	"registry/api"
 	"registry/config"
+	"registry/storage"
 )
 
 func main() {
@@ -17,6 +18,11 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	registryAPI := api.New(cfg)
-	log.Fatalln(registryAPI.Serve())
+	storage, err := storage.New(cfg.Storage)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	registryAPI := api.New(cfg.API, storage)
+	log.Fatalln(registryAPI.ListenAndServe())
 }
