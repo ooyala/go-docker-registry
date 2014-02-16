@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-type Storage interface{
+type Storage interface {
 	init() error
 
 	Get(string) ([]byte, error)
@@ -14,11 +14,12 @@ type Storage interface{
 	PutReader(string, io.Reader) error
 	List(string) ([]string, error)
 	Exists(string) (bool, error)
+	Size(string) (int64, error)
 	Remove(string) error
 	RemoveAll(string) error
 }
 
-type Config struct{
+type Config struct {
 	Type  string
 	Local *Local
 	S3    *S3

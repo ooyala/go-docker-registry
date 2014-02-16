@@ -30,7 +30,7 @@ func testStorage(t *testing.T, storage Storage) {
 		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
 	}
 
-	testGetPutExistsRemove(t, storage)
+	testGetPutExistsSizeRemove(t, storage)
 	testGetPutReaders(t, storage)
 	testListRemoveAll(t, storage)
 
@@ -40,15 +40,15 @@ func testStorage(t *testing.T, storage Storage) {
 	}
 }
 
-func testGetPutExistsRemove(t *testing.T, storage Storage) {
+func testGetPutExistsSizeRemove(t *testing.T, storage Storage) {
 	if exists, _ := storage.Exists("/1"); exists == true {
 		t.Fatal("Key should not exist yet")
 	}
 	if _, err := storage.Get("/1"); err == nil {
 		t.Fatal("Getting something that doesn't exist should cause an error")
 	}
-	if err := storage.Remove("/1"); err == nil {
-		t.Fatal("Removing something that doesn't exist should cause an error")
+	if err := storage.Remove("/1"); err != nil {
+		t.Fatal("Removing something that doesn't exist should not cause an error")
 	}
 	if err := storage.Put("/1", []byte("lolwtf")); err != nil {
 		t.Fatal(err)
@@ -56,10 +56,15 @@ func testGetPutExistsRemove(t *testing.T, storage Storage) {
 	if exists, _ := storage.Exists("/1"); exists == false {
 		t.Fatal("Key should exist now")
 	}
+	if size, err := storage.Size("/1"); err != nil {
+		t.Fatal("Size should not result in an error")
+	} else if size != int64(len("lolwtf")) {
+		t.Fatalf("Size should be %d", len("lolwtf"))
+	}
 	if content, err := storage.Get("/1"); err != nil {
 		t.Fatal(err)
 	} else if string(content) != "lolwtf" {
-		t.Log("the content should be 'lolwtf' was '"+string(content)+"'")
+		t.Log("the content should be 'lolwtf' was '" + string(content) + "'")
 		t.FailNow()
 	}
 	if err := storage.Remove("/1"); err != nil {
@@ -77,11 +82,16 @@ func testGetPutReaders(t *testing.T, storage Storage) {
 	if _, err := storage.GetReader("/dir/1"); err == nil {
 		t.Fatal("Getting something that doesn't exist should cause an error")
 	}
-	if err := storage.Remove("/dir/1"); err == nil {
-		t.Fatal("Removing something that doesn't exist should cause an error")
+	if err := storage.Remove("/dir/1"); err != nil {
+		t.Fatal("Removing something that doesn't exist should not cause an error")
 	}
 	if err := storage.PutReader("/dir/1", bytes.NewBufferString("lolwtfdir")); err != nil {
 		t.Fatal(err)
+	}
+	if size, err := storage.Size("/dir/1"); err != nil {
+		t.Fatal("Size should not result in an error")
+	} else if size != int64(len("lolwtfdir")) {
+		t.Fatalf("Size should be %d", len("lolwtfdir"))
 	}
 	if exists, _ := storage.Exists("/dir/1"); exists == false {
 		t.Fatal("Key should exist now")
@@ -94,7 +104,7 @@ func testGetPutReaders(t *testing.T, storage Storage) {
 			t.Fatal(err)
 		}
 		if string(content) != "lolwtfdir" {
-			t.Log("the content should be 'lolwtfdir' was '"+string(content)+"'")
+			t.Log("the content should be 'lolwtfdir' was '" + string(content) + "'")
 			t.FailNow()
 		}
 	}
@@ -104,9 +114,9 @@ func testGetPutReaders(t *testing.T, storage Storage) {
 	if _, err := storage.List("/dir"); err == nil {
 		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
 	}
-	if _, err := storage.List("/"); err == nil {
+	if names, err := storage.List("/"); err == nil {
 		// this tests to make sure empty directories are removed (s3 behavior exists on all storages)
-		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
+		t.Fatalf("According to docker 0.6.5, listing an empty directory should return an error, got %+v", names)
 	}
 }
 

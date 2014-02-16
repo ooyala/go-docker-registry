@@ -39,4 +39,3 @@ func (a *RegistryAPI) DeleteRepoImagesHandler(w http.ResponseWriter, r *http.Req
 func (a *RegistryAPI) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	NotImplementedHandler(w, r)
 }
-

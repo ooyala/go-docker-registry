@@ -60,7 +60,7 @@ func (s *Local) List(relpath string) ([]string, error) {
 	}
 	if len(infos) == 0 {
 		// to be consistent with S3, return no such file or directory here. from docker-registry 0.6.5
-		return nil, errors.New("open "+abspath+": no such file or directory")
+		return nil, errors.New("open " + abspath + ": no such file or directory")
 	}
 	list := make([]string, len(infos))
 	for i, info := range infos {
@@ -74,13 +74,25 @@ func (s *Local) Exists(relpath string) (bool, error) {
 	return info != nil && !os.IsNotExist(err), err
 }
 
+func (s *Local) Size(relpath string) (int64, error) {
+	info, err := os.Stat(path.Join(s.Root, relpath))
+	if info == nil || err != nil {
+		// dunno size
+		return -1, err
+	}
+	return info.Size(), nil
+}
+
 func (s *Local) Remove(relpath string) error {
+	if ok, _ := s.Exists(relpath); !ok {
+		return nil
+	}
 	abspath := path.Join(s.Root, relpath)
 	err := os.Remove(abspath)
 	if err != nil {
 		return err
 	}
-	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(abspath) {
+	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
 		// loop over parent directires and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
 	}
@@ -88,12 +100,15 @@ func (s *Local) Remove(relpath string) error {
 }
 
 func (s *Local) RemoveAll(relpath string) error {
+	if ok, _ := s.Exists(relpath); !ok {
+		return nil
+	}
 	abspath := path.Join(s.Root, relpath)
 	err := os.RemoveAll(abspath)
 	if err != nil {
 		return err
 	}
-	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(abspath) {
+	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
 		// loop over parent directires and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
 	}
