@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 )
 
 type Local struct {
@@ -64,14 +65,20 @@ func (s *Local) List(relpath string) ([]string, error) {
 	}
 	list := make([]string, len(infos))
 	for i, info := range infos {
-		list[i] = path.Join(abspath, info.Name())
+		list[i] = path.Join(relpath, info.Name())
+		if !strings.HasPrefix(list[i], "/") {
+			list[i] = "/" + list[i]
+		}
 	}
 	return list, nil
 }
 
 func (s *Local) Exists(relpath string) (bool, error) {
 	info, err := os.Stat(path.Join(s.Root, relpath))
-	return info != nil && !os.IsNotExist(err), err
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return info != nil, err
 }
 
 func (s *Local) Size(relpath string) (int64, error) {

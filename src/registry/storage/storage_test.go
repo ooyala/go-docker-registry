@@ -8,6 +8,23 @@ import (
 	"testing"
 )
 
+func checkSlices(t *testing.T, got, expected []string) {
+	diffMap := map[string]int{}
+	for _, val := range got {
+		diffMap[val]++
+	}
+	for _, val := range expected {
+		diffMap[val]--
+		if diffMap[val] == 0 {
+			delete(diffMap, val)
+		}
+	}
+	if len(diffMap) == 0 {
+		return
+	}
+	t.Fatalf("Slices not equal. got %+v, expected %+v", got, expected)
+}
+
 func storageFromFile(filename string, storage Storage) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -137,16 +154,22 @@ func testListRemoveAll(t *testing.T, storage Storage) {
 		t.Fatal(err)
 	} else if len(names) != 2 {
 		t.Fatal("There should be two names in the directory list")
+	} else {
+		checkSlices(t, names, []string{"/dir", "/anotherdir"})
 	}
 	if names, err := storage.List("/dir"); err != nil {
 		t.Fatal(err)
 	} else if len(names) != 3 {
 		t.Fatal("There should be three names in the directory list")
+	} else {
+		checkSlices(t, names, []string{"/dir/1", "/dir/2", "/dir/3"})
 	}
 	if names, err := storage.List("/anotherdir/"); err != nil {
 		t.Fatal(err)
 	} else if len(names) != 1 {
 		t.Fatal("There should be one name in the directory list")
+	} else {
+		checkSlices(t, names, []string{"/anotherdir/1"})
 	}
 	if err := storage.RemoveAll("/dir"); err != nil {
 		t.Fatal(err)
@@ -155,6 +178,8 @@ func testListRemoveAll(t *testing.T, storage Storage) {
 		t.Fatal(err)
 	} else if len(names) != 1 {
 		t.Fatal("There should be one name in the directory list")
+	} else {
+		checkSlices(t, names, []string{"/anotherdir"})
 	}
 	if _, err := storage.List("/dir"); err == nil {
 		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
@@ -163,6 +188,8 @@ func testListRemoveAll(t *testing.T, storage Storage) {
 		t.Fatal(err)
 	} else if len(names) != 1 {
 		t.Fatal("There should be one name in the directory list")
+	} else {
+		checkSlices(t, names, []string{"/anotherdir/1"})
 	}
 	if err := storage.RemoveAll("/anotherdir"); err != nil {
 		t.Fatal(err)

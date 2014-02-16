@@ -154,12 +154,17 @@ func (s *S3) List(relpath string) ([]string, error) {
 	}
 	names := make([]string, len(result.Contents)+len(result.CommonPrefixes))
 	for i, key := range result.Contents {
-		// return path Root instead of sanitized version to be consistent
-		names[i] = s.Root + strings.TrimPrefix(key.Key, s.root)
+		names[i] = strings.TrimPrefix(key.Key, s.root)
+		if !strings.HasPrefix(names[i], "/") {
+			names[i] = "/" + names[i]
+		}
 	}
 	for i, prefix := range result.CommonPrefixes {
-		// return path Root instead of sanitized version to be consistent, also trim trailing "/"
-		names[i+len(result.Contents)] = s.Root + strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
+		// trim trailing "/"
+		names[i+len(result.Contents)] = strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
+		if !strings.HasPrefix(names[i+len(result.Contents)], "/") {
+			names[i+len(result.Contents)] = "/" + names[i+len(result.Contents)]
+		}
 	}
 	if len(names) == 0 {
 		// nothing there. return an error.
