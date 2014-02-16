@@ -192,6 +192,9 @@ func (s *S3) Size(relpath string) (int64, error) {
 func (s *S3) Remove(relpath string) error {
 	s.authLock.RLock()
 	defer s.authLock.RUnlock()
+	if exists, err := s.bucket.Exists(s.key(relpath)); !exists || err != nil {
+		return errors.New("no such file or directory: "+relpath)
+	}
 	return s.bucket.Del(s.key(relpath))
 }
 
@@ -207,7 +210,7 @@ func (s *S3) RemoveAll(relpath string) error {
 		s.bucket.Del(key.Key)
 	}
 	// finally, remove it
-	return s.Remove(relpath)
+	return s.bucket.Del(s.key(relpath))
 }
 
 // This will ensure that we don't try to upload the same thing from two different requests at the same time

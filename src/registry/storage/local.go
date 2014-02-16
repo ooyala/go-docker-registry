@@ -91,8 +91,8 @@ func (s *Local) Size(relpath string) (int64, error) {
 }
 
 func (s *Local) Remove(relpath string) error {
-	if ok, _ := s.Exists(relpath); !ok {
-		return nil
+	if ok, err := s.Exists(relpath); !ok || err != nil {
+		return errors.New("no such file or directory: "+relpath)
 	}
 	abspath := path.Join(s.Root, relpath)
 	err := os.Remove(abspath)

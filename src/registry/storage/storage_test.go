@@ -64,8 +64,8 @@ func testGetPutExistsSizeRemove(t *testing.T, storage Storage) {
 	if _, err := storage.Get("/1"); err == nil {
 		t.Fatal("Getting something that doesn't exist should cause an error")
 	}
-	if err := storage.Remove("/1"); err != nil {
-		t.Fatal("Removing something that doesn't exist should not cause an error")
+	if err := storage.Remove("/1"); err == nil {
+		t.Fatal("Removing something that doesn't exist should cause an error")
 	}
 	if err := storage.Put("/1", []byte("lolwtf")); err != nil {
 		t.Fatal(err)
@@ -99,8 +99,8 @@ func testGetPutReaders(t *testing.T, storage Storage) {
 	if _, err := storage.GetReader("/dir/1"); err == nil {
 		t.Fatal("Getting something that doesn't exist should cause an error")
 	}
-	if err := storage.Remove("/dir/1"); err != nil {
-		t.Fatal("Removing something that doesn't exist should not cause an error")
+	if err := storage.Remove("/dir/1"); err == nil {
+		t.Fatal("Removing something that doesn't exist should cause an error")
 	}
 	if err := storage.PutReader("/dir/1", bytes.NewBufferString("lolwtfdir")); err != nil {
 		t.Fatal(err)
