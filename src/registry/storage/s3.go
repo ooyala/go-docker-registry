@@ -206,10 +206,14 @@ func (s *S3) RemoveAll(relpath string) error {
 	if err != nil {
 		return err
 	}
+	if len(result.Contents) == 0 {
+		// nothing under it, return error
+		return errors.New("no such file or directory "+relpath)
+	}
 	for _, key := range result.Contents {
 		s.bucket.Del(key.Key)
 	}
-	// finally, remove it
+	// finally, remove it if needed
 	return s.bucket.Del(s.key(relpath))
 }
 

@@ -39,10 +39,8 @@ func storageFromFile(filename string, storage Storage) error {
 }
 
 func testStorage(t *testing.T, storage Storage) {
-	// remove all
-	if err := storage.RemoveAll("/"); err != nil {
-		t.Fatal(err)
-	}
+	// remove all to initialize
+	storage.RemoveAll("/")
 	if _, err := storage.List("/"); err == nil {
 		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
 	}
@@ -52,8 +50,9 @@ func testStorage(t *testing.T, storage Storage) {
 	testListRemoveAll(t, storage)
 
 	// cleanup
-	if err := storage.RemoveAll("/"); err != nil {
-		t.Fatal(err)
+	storage.RemoveAll("/")
+	if _, err := storage.List("/"); err == nil {
+		t.Fatal("According to docker 0.6.5, listing an empty directory should return an error")
 	}
 }
 
