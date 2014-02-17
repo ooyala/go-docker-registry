@@ -101,8 +101,24 @@ func testGetPutReaders(t *testing.T, storage Storage) {
 	if err := storage.Remove("/dir/1"); err == nil {
 		t.Fatal("Removing something that doesn't exist should cause an error")
 	}
-	if err := storage.PutReader("/dir/1", bytes.NewBufferString("lolwtfdir")); err != nil {
+	fileSize := int64(-1)
+	afterWrite := func(file *os.File) {
+		info, err := file.Stat()
+		if err != nil {
+			fileSize = -2
+			return
+		}
+		fileSize = info.Size()
+	}
+	if err := storage.PutReader("/dir/1", bytes.NewBufferString("lolwtfdir"), afterWrite); err != nil {
 		t.Fatal(err)
+	}
+	if fileSize == -1 {
+		t.Fatal("afterWrite should have been called!")
+	} else if fileSize == -2 {
+		t.Fatal("afterWrite should have a proper handle on a file!")
+	} else if fileSize != int64(len("lolwtfdir")) {
+		t.Fatal("afterWrite should have the correct file size!")
 	}
 	if size, err := storage.Size("/dir/1"); err != nil {
 		t.Fatal("Size should not result in an error")

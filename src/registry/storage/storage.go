@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
 )
 
@@ -15,7 +16,7 @@ type Storage interface {
 	Get(string) ([]byte, error)
 	Put(string, []byte) error
 	GetReader(string) (io.ReadCloser, error)
-	PutReader(string, io.Reader) error
+	PutReader(string, io.Reader, func(*os.File)) error
 	List(string) ([]string, error)
 	Exists(string) (bool, error)
 	Size(string) (int64, error)

@@ -128,13 +128,13 @@ func (s *S3) GetReader(relpath string) (io.ReadCloser, error) {
 	return s.bucket.GetReader(s.key(relpath))
 }
 
-func (s *S3) PutReader(relpath string, r io.Reader) error {
+func (s *S3) PutReader(relpath string, r io.Reader, afterWrite func(*os.File)) error {
 	key := s.key(relpath)
 	buffer, err := s.bufferDir.reserve(key)
 	if err != nil {
 		return err
 	}
-	defer buffer.release()
+	defer buffer.release(afterWrite)
 	// don't know the length, buffer to file first
 	length, err := io.Copy(buffer, r)
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *S3) Remove(relpath string) error {
 	s.authLock.RLock()
 	defer s.authLock.RUnlock()
 	if exists, err := s.bucket.Exists(s.key(relpath)); !exists || err != nil {
-		return errors.New("no such file or directory: "+relpath)
+		return errors.New("no such file or directory: " + relpath)
 	}
 	return s.bucket.Del(s.key(relpath))
 }
@@ -208,7 +208,7 @@ func (s *S3) RemoveAll(relpath string) error {
 	}
 	if len(result.Contents) == 0 {
 		// nothing under it, return error
-		return errors.New("no such file or directory "+relpath)
+		return errors.New("no such file or directory " + relpath)
 	}
 	for _, key := range result.Contents {
 		s.bucket.Del(key.Key)
@@ -245,9 +245,11 @@ type Buffer struct {
 	dir *BufferDir
 }
 
-func (b *Buffer) release() error {
+func (b *Buffer) release(beforeRelease func(*os.File)) {
 	b.dir.Lock()
 	defer b.dir.Unlock()
+	b.Seek(0, 0)
+	beforeRelease(&b.File)
 	b.Close()
-	return os.Remove(b.Name())
+	os.Remove(b.Name())
 }

@@ -43,12 +43,16 @@ func (s *Local) GetReader(relpath string) (io.ReadCloser, error) {
 	return os.Open(path.Join(s.Root, relpath))
 }
 
-func (s *Local) PutReader(relpath string, r io.Reader) error {
+func (s *Local) PutReader(relpath string, r io.Reader, afterWrite func(*os.File)) error {
 	file, err := s.createFile(relpath)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		file.Seek(0, 0)
+		afterWrite(file)
+		file.Close()
+	}()
 	_, err = io.Copy(file, r)
 	return err
 }
@@ -92,7 +96,7 @@ func (s *Local) Size(relpath string) (int64, error) {
 
 func (s *Local) Remove(relpath string) error {
 	if ok, err := s.Exists(relpath); !ok || err != nil {
-		return errors.New("no such file or directory: "+relpath)
+		return errors.New("no such file or directory: " + relpath)
 	}
 	abspath := path.Join(s.Root, relpath)
 	err := os.Remove(abspath)
@@ -108,7 +112,7 @@ func (s *Local) Remove(relpath string) error {
 
 func (s *Local) RemoveAll(relpath string) error {
 	if ok, err := s.Exists(relpath); !ok || err != nil {
-		return errors.New("no such file or directory: "+relpath)
+		return errors.New("no such file or directory: " + relpath)
 	}
 	abspath := path.Join(s.Root, relpath)
 	err := os.RemoveAll(abspath)
