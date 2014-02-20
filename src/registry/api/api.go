@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cespare/go-apachelog"
 	"github.com/gorilla/mux"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"registry/storage"
 )
@@ -120,7 +122,7 @@ func (a *RegistryAPI) ListenAndServe() error {
 	r.HandleFunc("/v1/search", a.SearchHandler).Methods("GET")
 
 	log.Printf("Listening on %s", a.Config.Addr)
-	return http.ListenAndServe(a.Config.Addr, r)
+	return http.ListenAndServe(a.Config.Addr, apachelog.NewHandler(r, os.Stderr))
 }
 
 func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int, headers map[string][]string) {

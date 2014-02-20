@@ -7,3 +7,6 @@
 [submodule "vendor/src/github.com/gorilla/mux"]
 	path = vendor/src/github.com/gorilla/mux
 	url = ssh://git@github.com/gorilla/mux
+[submodule "vendor/src/github.com/cespare/go-apachelog"]
+	path = vendor/src/github.com/cespare/go-apachelog
+	url = ssh://git@github.com/cespare/go-apachelog
