@@ -24,9 +24,9 @@ type Storage interface {
 }
 
 type Config struct {
-	Type  string
-	Local *Local
-	S3    *S3
+	Type  string `json:"type"`
+	Local *Local `json:"local"`
+	S3    *S3    `json:"s3"`
 }
 
 func New(cfg *Config) (Storage, error) {
