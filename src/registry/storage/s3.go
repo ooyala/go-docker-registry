@@ -128,7 +128,7 @@ func (s *S3) GetReader(relpath string) (io.ReadCloser, error) {
 	return s.bucket.GetReader(s.key(relpath))
 }
 
-func (s *S3) PutReader(relpath string, r io.Reader, afterWrite func(*os.File)) error {
+func (s *S3) PutReader(relpath string, r io.Reader, afterWrite func(io.Reader)) error {
 	key := s.key(relpath)
 	buffer, err := s.bufferDir.reserve(key)
 	if err != nil {
@@ -245,7 +245,7 @@ type Buffer struct {
 	dir *BufferDir
 }
 
-func (b *Buffer) release(beforeRelease func(*os.File)) {
+func (b *Buffer) release(beforeRelease func(io.Reader)) {
 	b.dir.Lock()
 	defer b.dir.Unlock()
 	b.Seek(0, 0)

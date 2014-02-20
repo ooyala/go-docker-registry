@@ -7,8 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"registry/storage"
 )
+
+var USER_AGENT_REGEXP = regexp.MustCompile("([^\\s/]+)/([^\\s/]+)")
+var EMPTY_HEADERS = map[string][]string{}
 
 type Config struct {
 	Addr           string              `json:"addr"`
@@ -42,18 +46,15 @@ func (a *RegistryAPI) ListenAndServe() error {
 
 	// http://docs.docker.io/en/latest/reference/api/registry_api/#images
 	// Documented and implemented in docker-registry 0.6.5
-	r.HandleFunc("/v1/images/{imageID}/layer", a.GetImageLayerHandler).Methods("GET")
+	r.HandleFunc("/v1/images/{imageID}/layer", a.RequireCompletion(a.CheckIfModifiedSince(a.GetImageLayerHandler))).Methods("GET")
 	r.HandleFunc("/v1/images/{imageID}/layer", a.PutImageLayerHandler).Methods("PUT")
-	r.HandleFunc("/v1/images/{imageID}/json", a.GetImageJsonHandler).Methods("GET")
+	r.HandleFunc("/v1/images/{imageID}/json", a.RequireCompletion(a.CheckIfModifiedSince(a.GetImageJsonHandler))).Methods("GET")
 	r.HandleFunc("/v1/images/{imageID}/json", a.PutImageJsonHandler).Methods("PUT")
-	r.HandleFunc("/v1/images/{imageID}/ancestry", a.GetImageAncestryHandler).Methods("GET")
+	r.HandleFunc("/v1/images/{imageID}/ancestry", a.RequireCompletion(a.CheckIfModifiedSince(a.GetImageAncestryHandler))).Methods("GET")
 	// Undocumented but implemented in docker-registry 0.6.5
 	r.HandleFunc("/v1/images/{imageID}/checksum", a.PutImageChecksumHandler).Methods("PUT")
-	r.HandleFunc("/v1/images/{imageID}/files", a.GetImageFilesHandler).Methods("GET")
-	r.HandleFunc("/v1/images/{imageID}/diff", a.GetImageDiffHandler).Methods("GET")
-	r.HandleFunc("/v1/private_images/{imageID}/layer", a.GetPrivateImageLayerHandler).Methods("GET")
-	r.HandleFunc("/v1/private_images/{imageID}/json", a.GetPrivateImageJsonHandler).Methods("GET")
-	r.HandleFunc("/v1/private_images/{imageID}/files", a.GetPrivateImageFilesHandler).Methods("GET")
+	r.HandleFunc("/v1/images/{imageID}/files", a.RequireCompletion(a.CheckIfModifiedSince(a.GetImageFilesHandler))).Methods("GET")
+	r.HandleFunc("/v1/images/{imageID}/diff", a.RequireCompletion(a.CheckIfModifiedSince(a.GetImageDiffHandler))).Methods("GET")
 
 	// http://docs.docker.io/en/latest/reference/api/registry_api/#tags
 	// Documented and implemented in docker-registry 0.6.5
@@ -68,18 +69,23 @@ func (a *RegistryAPI) ListenAndServe() error {
 	// Undocumented but implemented in docker-registry 0.6.5
 	r.HandleFunc("/v1/repositories/{repo}/tags", a.DeleteRepoTagsHandler).Methods("DELETE")
 	r.HandleFunc("/v1/repositories/{repo}/json", a.GetRepoJsonHandler).Methods("GET")
-	r.HandleFunc("/v1/repositories/{repo}/properties", a.GetRepoPropertiesHandler).Methods("GET")
-	r.HandleFunc("/v1/repositories/{repo}/properties", a.PutRepoPropertiesHandler).Methods("PUT")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags", a.DeleteRepoTagsHandler).Methods("DELETE")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/json", a.GetRepoJsonHandler).Methods("GET")
-	r.HandleFunc("/v1/repositories/{namespace}/{repo}/properties", a.GetRepoPropertiesHandler).Methods("GET")
-	r.HandleFunc("/v1/repositories/{namespace}/{repo}/properties", a.PutRepoPropertiesHandler).Methods("PUT")
 	// Documented and unimplemented in docker-registry 0.6.5
 	r.HandleFunc("/v1/repositories/{repo}/", a.DeleteRepoHandler).Methods("DELETE")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/", a.DeleteRepoHandler).Methods("DELETE")
 	// Undocumented and unimplemented (additional)
 	r.HandleFunc("/v1/repositories/{repo}", a.DeleteRepoHandler).Methods("DELETE")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}", a.DeleteRepoHandler).Methods("DELETE")
+
+	// Unused (for private images)
+	//r.HandleFunc("/v1/private_images/{imageID}/layer", a.GetPrivateImageLayerHandler).Methods("GET")
+	//r.HandleFunc("/v1/private_images/{imageID}/json", a.GetPrivateImageJsonHandler).Methods("GET")
+	//r.HandleFunc("/v1/private_images/{imageID}/files", a.GetPrivateImageFilesHandler).Methods("GET")
+	//r.HandleFunc("/v1/repositories/{repo}/properties", a.GetRepoPropertiesHandler).Methods("GET")
+	//r.HandleFunc("/v1/repositories/{repo}/properties", a.PutRepoPropertiesHandler).Methods("PUT")
+	//r.HandleFunc("/v1/repositories/{namespace}/{repo}/properties", a.GetRepoPropertiesHandler).Methods("GET")
+	//r.HandleFunc("/v1/repositories/{namespace}/{repo}/properties", a.PutRepoPropertiesHandler).Methods("PUT")
 
 	//
 	// Index APIs (http://docs.docker.io/en/latest/reference/api/index_api/)
@@ -155,4 +161,13 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 
 func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not Implemented", http.StatusNotImplemented)
+}
+
+func parseRepo(r *http.Request, extra string) (string, string, string) {
+	vars := mux.Vars(r)
+	namespace := vars["namespace"]
+	if vars["namespace"] == "" {
+		namespace = "library"
+	}
+	return namespace, vars["repo"], vars[extra]
 }

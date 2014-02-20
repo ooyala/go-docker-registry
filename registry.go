@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"log"
 	"registry/api"
 	"registry/config"
+	"registry/logger"
 	"registry/storage"
 )
 
@@ -15,14 +15,14 @@ func main() {
 
 	cfg, err := config.New(cfgFile)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Fatal(err.Error())
 	}
 
 	storage, err := storage.New(cfg.Storage)
 	if err != nil {
-		log.Fatalln(err)
+		logger.Fatal(err.Error())
 	}
 
 	registryAPI := api.New(cfg.API, storage)
-	log.Fatalln(registryAPI.ListenAndServe())
+	logger.Fatal(registryAPI.ListenAndServe().Error())
 }
