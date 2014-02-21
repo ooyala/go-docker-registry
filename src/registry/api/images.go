@@ -183,21 +183,21 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	}
 	err = a.Storage.Put(markPath, []byte("true"))
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+		a.response(w, "Put Mark Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	jsonBytes, err := json.Marshal(&data)
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+		a.response(w, "Marshal Json Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	err = a.Storage.Put(jsonPath, jsonBytes)
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+		a.response(w, "Put Json Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	if err := layers.GenerateAncestry(a.Storage, imageID, parentID); err != nil {
-		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+		a.response(w, "Generate Ancestry Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	a.response(w, "true", http.StatusOK, EMPTY_HEADERS)
