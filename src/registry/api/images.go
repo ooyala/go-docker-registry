@@ -17,7 +17,7 @@ func (a *RegistryAPI) RequireCompletion(handler http.HandlerFunc) http.HandlerFu
 		vars := mux.Vars(r)
 		imageID := vars["imageID"]
 		if exists, _ := a.Storage.Exists(storage.ImageMarkPath(imageID)); exists {
-			a.response(w, "Image is being uploaded, retry later", 400, EMPTY_HEADERS)
+			a.response(w, "Image is being uploaded, retry later", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		}
 		handler(w, r)
@@ -33,10 +33,10 @@ func (a *RegistryAPI) GetImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	headers := DefaultCacheHeaders()
 	reader, err := a.Storage.GetReader(storage.ImageLayerPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", 404, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, reader, 200, headers)
+	a.response(w, reader, http.StatusOK, headers)
 }
 
 func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	imageID := vars["imageID"]
 	jsonContent, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", 404, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	layerPath := storage.ImageLayerPath(imageID)
@@ -52,7 +52,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	layerExists, _ := a.Storage.Exists(layerPath)
 	markExists, _ := a.Storage.Exists(markPath)
 	if layerExists && !markExists {
-		a.response(w, "Image already exists", 409, EMPTY_HEADERS)
+		a.response(w, "Image already exists", http.StatusConflict, EMPTY_HEADERS)
 		return
 	}
 	// compute checksum while reading. create a TeeReader
@@ -64,14 +64,14 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	// PutReader takes a function that will run after the write finishes:
 	err = a.Storage.PutReader(layerPath, teeReader, tarInfo.Load)
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	checksums := map[string]bool{fmt.Sprintf("sha256:%x", sha256Writer.Sum(nil)): true}
 	if tarInfo.Error == nil {
 		filesJson, err := tarInfo.TarFilesInfo.Json()
 		if err != nil {
-			a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+			a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 			return
 		}
 		layers.SetImageFilesCache(a.Storage, imageID, filesJson)
@@ -82,24 +82,24 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		csumBytes, err := json.Marshal(&checksums)
 		if err != nil {
-			a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+			a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 			return
 		}
 		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: string(csumBytes)})
-		a.response(w, true, 200, EMPTY_HEADERS)
+		a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 		return
 	}
 	if !checksums[string(storedSum)] {
 		logger.Debug("put_image_layer: Wrong checksum")
-		a.response(w, "Checksum mismatch, ignoring the layer", 400, EMPTY_HEADERS)
+		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if err := a.Storage.Remove(markPath); err != nil {
 		logger.Debug("put_image_layer: Error removing mark path: %s", err.Error())
-		a.response(w, "Internal Error", 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error", http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, true, 200, EMPTY_HEADERS)
+	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
 // RequiresCompletion
@@ -111,7 +111,7 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", 404, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	size, err := a.Storage.Size(storage.ImageLayerPath(imageID))
@@ -125,7 +125,7 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 			headers["X-Docker-Checksum"] = []string{string(checksum)}
 		}
 	}
-	a.response(w, data, 200, headers)
+	a.response(w, data, http.StatusOK, headers)
 }
 
 func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -136,11 +136,11 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	var data map[string]interface{}
 	err := dec.Decode(&data)
 	if err != nil {
-		a.response(w, "Invalid JSON", 400, EMPTY_HEADERS)
+		a.response(w, "Invalid JSON", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if _, exists := data["id"]; !exists {
-		a.response(w, "Missing key 'id' in JSON", 400, EMPTY_HEADERS)
+		a.response(w, "Missing key 'id' in JSON", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	checksum := r.Header.Get("X-Docker-Checksum")
@@ -148,27 +148,27 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		// remove the old checksum in case it's a retry after a fail
 		a.Storage.Remove(storage.ImageChecksumPath(imageID))
 	} else if err := layers.StoreChecksum(a.Storage, imageID, checksum); err != nil {
-		a.response(w, err.Error(), 400, EMPTY_HEADERS)
+		a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	dataID, ok := data["id"].(string)
 	if !ok {
-		a.response(w, "Invalid JSON: 'id' is not a string", 400, EMPTY_HEADERS)
+		a.response(w, "Invalid JSON: 'id' is not a string", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if imageID != dataID {
-		a.response(w, "JSON data contains invalid id", 400, EMPTY_HEADERS)
+		a.response(w, "JSON data contains invalid id", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	var parentID string
 	if _, exists := data["parent"]; exists {
 		parentID, ok = data["parent"].(string)
 		if !ok {
-			a.response(w, "Invalid JSON: 'parent' is not a string", 400, EMPTY_HEADERS)
+			a.response(w, "Invalid JSON: 'parent' is not a string", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		}
 		if exists, _ := a.Storage.Exists(storage.ImageJsonPath(parentID)); !exists {
-			a.response(w, "Image depends on non-existant parent", 400, EMPTY_HEADERS)
+			a.response(w, "Image depends on non-existant parent", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		}
 	}
@@ -182,24 +182,24 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	}
 	err = a.Storage.Put(markPath, []byte("true"))
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	jsonBytes, err := json.Marshal(&data)
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	err = a.Storage.Put(jsonPath, jsonBytes)
 	if err != nil {
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	if err := layers.GenerateAncestry(a.Storage, imageID, parentID); err != nil {
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, "true", 200, EMPTY_HEADERS)
+	a.response(w, "true", http.StatusOK, EMPTY_HEADERS)
 }
 
 // RequiresCompletion
@@ -211,10 +211,10 @@ func (a *RegistryAPI) GetImageAncestryHandler(w http.ResponseWriter, r *http.Req
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageAncestryPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", 404, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, data, 200, headers)
+	a.response(w, data, http.StatusOK, headers)
 }
 
 func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Request) {
@@ -223,18 +223,18 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	// read header
 	checksum := r.Header.Get("X-Docker-Checksum")
 	if checksum == "" {
-		a.response(w, "Missing Image's checksum", 400, EMPTY_HEADERS)
+		a.response(w, "Missing Image's checksum", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	// read cookie
 	checksumCookie, err := r.Cookie("checksum")
 	if err != nil {
-		a.response(w, "Checksum not found in Cookie", 400, EMPTY_HEADERS)
+		a.response(w, "Checksum not found in Cookie", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	// check if image json exists
 	if exists, _ := a.Storage.Exists(storage.ImageJsonPath(imageID)); !exists {
-		a.response(w, "Image not found", 404, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	markPath := storage.ImageMarkPath(imageID)
@@ -247,16 +247,16 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	var checksumMap map[string]bool
 	err = json.Unmarshal([]byte(checksumCookie.Value), &checksumMap)
 	if err != nil {
-		a.response(w, "Can't read checksum Cookie", 400, EMPTY_HEADERS)
+		a.response(w, "Can't read checksum Cookie", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if !checksumMap[checksum] {
 		logger.Debug("put_image_layer: Wrong checksum")
-		a.response(w, "Checksum mismatch", 400, EMPTY_HEADERS)
+		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	a.Storage.Remove(markPath)
-	a.response(w, true, 200, EMPTY_HEADERS)
+	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
 // RequiresCompletion
@@ -270,14 +270,14 @@ func (a *RegistryAPI) GetImageFilesHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch err.(type) {
 		case layers.TarError:
-			a.response(w, "Layer format not supported", 400, EMPTY_HEADERS)
+			a.response(w, "Layer format not supported", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		default:
-			a.response(w, "Image not found", 404, EMPTY_HEADERS)
+			a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 			return
 		}
 	}
-	a.response(w, data, 200, headers)
+	a.response(w, data, http.StatusOK, headers)
 }
 
 // RequiresCompletion
@@ -290,7 +290,7 @@ func (a *RegistryAPI) GetImageDiffHandler(w http.ResponseWriter, r *http.Request
 	diffJson, err := layers.GetImageDiffCache(a.Storage, imageID)
 	if err != nil {
 		// not cache miss. actual error
-		a.response(w, "Internal Error: "+err.Error(), 500, EMPTY_HEADERS)
+		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
 	if diffJson == nil {
@@ -298,5 +298,5 @@ func (a *RegistryAPI) GetImageDiffHandler(w http.ResponseWriter, r *http.Request
 		go layers.GenDiff(a.Storage, imageID)
 		diffJson = []byte{}
 	}
-	a.response(w, diffJson, 200, headers)
+	a.response(w, diffJson, http.StatusOK, headers)
 }

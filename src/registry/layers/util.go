@@ -8,6 +8,64 @@ import (
 	"strings"
 )
 
+// this function takes both []byte and []map[string]interface{} to shortcut in some cases.
+func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalBytes []byte, additional []map[string]interface{}) error {
+	path := storage.RepoIndexImagesPath(namespace, repo)
+	// get previous content
+	previousData, err := s.Get(path)
+	if err != nil {
+		// doesn't yet exist, just put the data
+		return s.Put(path, additionalBytes)
+	}
+	var previous []map[string]interface{}
+	if err := json.Unmarshal(previousData, &previous); err != nil {
+		return err
+	}
+	if len(previous) == 0 {
+		// nothing in previous, just put the data
+		return s.Put(path, additionalBytes)
+	}
+	// merge previous with current
+	newImagesMap := map[string]map[string]interface{}{}
+	for _, value := range additional {
+		id, ok := value["id"].(string)
+		if !ok {
+			// json was screwed up
+			return errors.New("Invalid Data")
+		}
+		if imageData, ok := newImagesMap[id]; ok {
+			if _, ok := imageData["checksum"]; ok {
+				continue
+			}
+		}
+		newImagesMap[id] = value
+	}
+	for _, value := range previous {
+		id, ok := value["id"].(string)
+		if !ok {
+			// json was screwed up
+			return errors.New("Invalid Data")
+		}
+		if imageData, ok := newImagesMap[id]; ok {
+			if _, ok := imageData["checksum"]; ok {
+				continue
+			}
+		}
+		newImagesMap[id] = value
+	}
+	newImagesArr := make([]map[string]interface{}, len(newImagesMap))
+	i := 0
+	for _, image := range newImagesMap {
+		newImagesArr[i] = image
+		i++
+	}
+	data, err := json.Marshal(&newImagesArr)
+	if err != nil {
+		return err
+	}
+	return s.Put(path, data)
+}
+
 func GetImageFilesCache(s storage.Storage, imageID string) ([]byte, error) {
 	return s.Get(storage.ImageFilesPath(imageID))
 }
