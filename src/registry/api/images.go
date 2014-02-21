@@ -90,12 +90,12 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !checksums[string(storedSum)] {
-		logger.Debug("put_image_layer: Wrong checksum")
+		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum")
 		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if err := a.Storage.Remove(markPath); err != nil {
-		logger.Debug("put_image_layer: Error removing mark path: %s", err.Error())
+		logger.Debug("[PutImageLayer]["+imageID+"] Error removing mark path: %s", err.Error())
 		a.response(w, "Internal Error", http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
@@ -136,7 +136,7 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	var data map[string]interface{}
 	err := dec.Decode(&data)
 	if err != nil {
-		a.response(w, "Invalid JSON", http.StatusBadRequest, EMPTY_HEADERS)
+		a.response(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	if _, exists := data["id"]; !exists {
@@ -251,7 +251,7 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if !checksumMap[checksum] {
-		logger.Debug("put_image_layer: Wrong checksum")
+		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum")
 		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}

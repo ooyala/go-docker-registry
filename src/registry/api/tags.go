@@ -22,7 +22,7 @@ var EMPTY_REPO_JSON = map[string]interface{}{
 
 func (a *RegistryAPI) GetRepoTagsHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, _ := parseRepo(r, "")
-	logger.Debug("[get_tags] namespace=%s; repository=%s", namespace, repo)
+	logger.Debug("[GetRepoTags] namespace=%s; repository=%s", namespace, repo)
 	names, err := a.Storage.List(storage.RepoTagPath(namespace, repo, ""))
 	if err != nil {
 		a.response(w, "Repository not found", http.StatusNotFound, EMPTY_HEADERS)
@@ -48,7 +48,7 @@ func (a *RegistryAPI) GetRepoTagsHandler(w http.ResponseWriter, r *http.Request)
 
 func (a *RegistryAPI) DeleteRepoTagsHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, _ := parseRepo(r, "")
-	logger.Debug("[delete_tags] namespace=%s; repository=%s", namespace, repo)
+	logger.Debug("[DeleteRepoTags] namespace=%s; repository=%s", namespace, repo)
 	if err := a.Storage.RemoveAll(storage.RepoTagPath(namespace, repo, "")); err != nil {
 		a.response(w, "Repository not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
@@ -58,7 +58,7 @@ func (a *RegistryAPI) DeleteRepoTagsHandler(w http.ResponseWriter, r *http.Reque
 
 func (a *RegistryAPI) GetRepoTagHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, tag := parseRepo(r, "tag")
-	logger.Debug("[get_tag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
+	logger.Debug("[GetRepoTag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
 	content, err := a.Storage.Get(storage.RepoTagPath(namespace, repo, tag))
 	if err != nil {
 		a.response(w, "Tag not found", http.StatusNotFound, EMPTY_HEADERS)
@@ -69,12 +69,13 @@ func (a *RegistryAPI) GetRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 
 func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, tag := parseRepo(r, "tag")
-	logger.Debug("[put_tag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
+	logger.Debug("[PutRepoTag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil || len(data) == 0 {
 		a.response(w, "Invalid data", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
+	logger.Debug("[PutRepoTag] body:\n%s", data)
 	if exists, err := a.Storage.Exists(storage.ImageJsonPath(string(data))); err != nil || !exists {
 		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
@@ -105,7 +106,7 @@ func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 
 func (a *RegistryAPI) DeleteRepoTagHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, tag := parseRepo(r, "tag")
-	logger.Debug("[delete_tag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
+	logger.Debug("[DeleteRepoTag] namespace=%s; repository=%s; tag=%s", namespace, repo, tag)
 	if err := a.Storage.Remove(storage.RepoTagPath(namespace, repo, tag)); err != nil {
 		a.response(w, "Tag not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
@@ -115,7 +116,7 @@ func (a *RegistryAPI) DeleteRepoTagHandler(w http.ResponseWriter, r *http.Reques
 
 func (a *RegistryAPI) GetRepoJsonHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, _ := parseRepo(r, "")
-	logger.Debug("[get_json] namespace=%s; repository=%s", namespace, repo)
+	logger.Debug("[GetRepoJson] namespace=%s; repository=%s", namespace, repo)
 	content, err := a.Storage.Get(storage.RepoJsonPath(namespace, repo))
 	if err != nil {
 		a.response(w, EMPTY_REPO_JSON, http.StatusOK, EMPTY_HEADERS)

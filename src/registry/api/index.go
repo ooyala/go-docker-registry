@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"registry/layers"
+	"registry/logger"
 	"registry/storage"
 )
 
@@ -24,6 +25,7 @@ func (a *RegistryAPI) putRepoImageHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
+	logger.Debug("[PutRepoImage] body:\n%s", bodyBytes)
 	var body []map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &body); err != nil {
 		a.response(w, "Error Decoding JSON: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
