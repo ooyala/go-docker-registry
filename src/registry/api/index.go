@@ -8,9 +8,13 @@ import (
 	"registry/storage"
 )
 
-func EndpointHeader(r *http.Request) map[string][]string {
-	// no auth header here because we don't do auth :)
-	return map[string][]string{"X-Docker-Endpoints": []string{r.Host}}
+func IndexHeaders(r *http.Request, namespace, repo, access string) map[string][]string {
+	fakeToken := []string{"Token signature=FAKESIGNATURE123,repository=\""+namespace+"/"+repo+"\",access="+access}
+	return map[string][]string{
+		"X-Docker-Endpoints": []string{r.Host},
+		"WWW-Authenticate": fakeToken,
+		"X-Docker-Token": fakeToken,
+	}
 }
 
 func (a *RegistryAPI) putRepoImageHandler(w http.ResponseWriter, r *http.Request, successStatus int) {
@@ -29,7 +33,7 @@ func (a *RegistryAPI) putRepoImageHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, "", successStatus, EndpointHeader(r))
+	a.response(w, "", successStatus, IndexHeaders(r, namespace, repo, "write"))
 }
 
 func (a *RegistryAPI) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +67,7 @@ func (a *RegistryAPI) GetRepoImagesHandler(w http.ResponseWriter, r *http.Reques
 		a.response(w, "Image Not Found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
-	a.response(w, data, http.StatusOK, EndpointHeader(r))
+	a.response(w, data, http.StatusOK, IndexHeaders(r, namespace, repo, "read"))
 }
 
 func (a *RegistryAPI) PutRepoImagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,8 +75,9 @@ func (a *RegistryAPI) PutRepoImagesHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *RegistryAPI) DeleteRepoImagesHandler(w http.ResponseWriter, r *http.Request) {
+	namespace, repo, _ := parseRepo(r, "")
 	// from docker-registry 0.6.5: Does nothing, this file will be removed when DELETE on repos
-	a.response(w, "", http.StatusNoContent, EndpointHeader(r))
+	a.response(w, "", http.StatusNoContent, IndexHeaders(r, namespace, repo, "delete"))
 }
 
 func (a *RegistryAPI) SearchHandler(w http.ResponseWriter, r *http.Request) {
