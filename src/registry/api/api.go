@@ -144,7 +144,12 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 		fmt.Fprintf(w, "%d", typedData)
 	case string:
 		w.WriteHeader(code)
-		w.Write([]byte(typedData))
+		if code >= 400 {
+			// if error, jsonify
+			w.Write([]byte("{\"error\":\""+typedData+"\"}"))
+		} else {
+			w.Write([]byte(typedData))
+		}
 	case []byte:
 		w.WriteHeader(code)
 		w.Write(typedData)
