@@ -109,7 +109,7 @@ func GenerateAncestry(s storage.Storage, imageID, parentID string) error {
 	logger.Debug("[GenerateAncestry] imageID="+imageID+" parentID="+parentID)
 	path := storage.ImageAncestryPath(imageID)
 	if parentID == "" {
-		s.Put(path, []byte("[\""+imageID+"\"]"))
+		return s.Put(path, []byte("[\""+imageID+"\"]"))
 	}
 	content, err := s.Get(storage.ImageAncestryPath(parentID))
 	if err != nil {
