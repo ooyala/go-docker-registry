@@ -10,11 +10,11 @@ import (
 )
 
 func IndexHeaders(r *http.Request, namespace, repo, access string) map[string][]string {
-	fakeToken := []string{"Token signature=FAKESIGNATURE123,repository=\""+namespace+"/"+repo+"\",access="+access}
+	fakeToken := []string{"Token signature=FAKESIGNATURE123,repository=\"" + namespace + "/" + repo + "\",access=" + access}
 	return map[string][]string{
 		"X-Docker-Endpoints": []string{r.Host},
-		"WWW-Authenticate": fakeToken,
-		"X-Docker-Token": fakeToken,
+		"WWW-Authenticate":   fakeToken,
+		"X-Docker-Token":     fakeToken,
 	}
 }
 

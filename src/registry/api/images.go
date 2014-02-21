@@ -10,6 +10,7 @@ import (
 	"registry/layers"
 	"registry/logger"
 	"registry/storage"
+	"strings"
 )
 
 func (a *RegistryAPI) RequireCompletion(handler http.HandlerFunc) http.HandlerFunc {
@@ -80,17 +81,17 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 
 	storedSum, err := a.Storage.Get(storage.ImageChecksumPath(imageID))
 	if err != nil {
-		csumBytes, err := json.Marshal(&checksums)
-		if err != nil {
-			a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
-			return
+		cookieString := ""
+		for sum, _ := range checksums {
+			cookieString += sum + ","
 		}
-		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: string(csumBytes)})
+		cookieString = strings.TrimSuffix(cookieString, ",")
+		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: cookieString})
 		a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 		return
 	}
 	if !checksums[string(storedSum)] {
-		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum")
+		logger.Debug("[PutImageLayer][" + imageID + "] Wrong checksum")
 		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
@@ -245,14 +246,12 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	}
 	err = layers.StoreChecksum(a.Storage, imageID, checksum)
 	// extract checksumCookie JSON
-	var checksumMap map[string]bool
-	err = json.Unmarshal([]byte(checksumCookie.Value), &checksumMap)
-	if err != nil {
-		a.response(w, "Can't read checksum Cookie", http.StatusBadRequest, EMPTY_HEADERS)
-		return
+	checksumMap := map[string]bool{}
+	for _, checksum := range strings.Split(checksumCookie.Value, ",") {
+		checksumMap[checksum] = true
 	}
 	if !checksumMap[checksum] {
-		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum")
+		logger.Debug("[PutImageChecksum][" + imageID + "] Wrong checksum")
 		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}

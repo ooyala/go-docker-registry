@@ -106,7 +106,7 @@ func StoreChecksum(s storage.Storage, imageID, checksum string) error {
 }
 
 func GenerateAncestry(s storage.Storage, imageID, parentID string) error {
-	logger.Debug("[GenerateAncestry] imageID="+imageID+" parentID="+parentID)
+	logger.Debug("[GenerateAncestry] imageID=" + imageID + " parentID=" + parentID)
 	path := storage.ImageAncestryPath(imageID)
 	if parentID == "" {
 		return s.Put(path, []byte("[\""+imageID+"\"]"))

@@ -146,7 +146,7 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 		w.WriteHeader(code)
 		if code >= 400 {
 			// if error, jsonify
-			w.Write([]byte("{\"error\":\""+typedData+"\"}"))
+			w.Write([]byte("{\"error\":\"" + typedData + "\"}"))
 		} else {
 			w.Write([]byte(typedData))
 		}
