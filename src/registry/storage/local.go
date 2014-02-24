@@ -43,7 +43,7 @@ func (s *Local) GetReader(relpath string) (io.ReadCloser, error) {
 	return os.Open(path.Join(s.Root, relpath))
 }
 
-func (s *Local) PutReader(relpath string, r io.Reader, afterWrite func(io.Reader)) error {
+func (s *Local) PutReader(relpath string, r io.Reader, afterWrite func(io.ReadSeeker)) error {
 	file, err := s.createFile(relpath)
 	if err != nil {
 		return err

@@ -15,7 +15,7 @@ type Storage interface {
 	Get(string) ([]byte, error)
 	Put(string, []byte) error
 	GetReader(string) (io.ReadCloser, error)
-	PutReader(string, io.Reader, func(io.Reader)) error
+	PutReader(string, io.Reader, func(io.ReadSeeker)) error
 	List(string) ([]string, error)
 	Exists(string) (bool, error)
 	Size(string) (int64, error)

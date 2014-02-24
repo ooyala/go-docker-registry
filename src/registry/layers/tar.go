@@ -2,6 +2,7 @@ package layers
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -33,8 +34,17 @@ func NewTarInfo(sumSeed []byte) *TarInfo {
 	}
 }
 
-func (t *TarInfo) Load(file io.Reader) {
-	reader := tar.NewReader(file)
+func (t *TarInfo) Load(file io.ReadSeeker) {
+	var reader *tar.Reader
+	file.Seek(0, 0)
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		// likely not a gzip compressed file
+		file.Seek(0, 0)
+		reader = tar.NewReader(file)
+	} else {
+		reader = tar.NewReader(gzipReader)
+	}
 	for {
 		header, err := reader.Next()
 		if err == io.EOF {
@@ -42,7 +52,7 @@ func (t *TarInfo) Load(file io.Reader) {
 			break
 		} else if err != nil {
 			// error occured
-			logger.Debug("put_image_layer: Error when reading tar stream tarsum. Disabling TarSum, TarFilesInfo. Error: %s", err.Error())
+			logger.Debug("[TarInfoLoad] Error when reading tar stream tarsum. Disabling TarSum, TarFilesInfo. Error: %s", err.Error())
 			t.Error = TarError(err.Error())
 			return
 		}
