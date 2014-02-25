@@ -70,6 +70,7 @@ type TarSum struct {
 }
 
 func NewTarSum(seed []byte) *TarSum {
+	logger.Debug("[TarSum] NewTarSum with seed:\n<<%s>>", seed)
 	return (&TarSum{}).init(seed)
 }
 
@@ -118,7 +119,7 @@ func (t *TarSum) Compute() string {
 	for _, hash := range t.hashes {
 		t.sha.Write([]byte(hash))
 	}
-	tarsum := hex.EncodeToString(t.sha.Sum(nil))
+	tarsum := "tarsum+sha256" + hex.EncodeToString(t.sha.Sum(nil))
 	logger.Debug("[TarSumCompute] return %s", tarsum)
 	return tarsum
 }

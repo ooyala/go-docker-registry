@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -68,7 +69,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	checksums := map[string]bool{fmt.Sprintf("sha256:%x", sha256Writer.Sum(nil)): true}
+	checksums := map[string]bool{"sha256:" + hex.EncodeToString(sha256Writer.Sum(nil)): true}
 	if tarInfo.Error == nil {
 		filesJson, err := tarInfo.TarFilesInfo.Json()
 		if err != nil {
