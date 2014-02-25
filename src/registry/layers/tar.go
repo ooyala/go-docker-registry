@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"io"
 	"registry/logger"
 	"sort"
@@ -65,6 +66,7 @@ func (t *TarInfo) Load(file io.ReadSeeker) {
 type TarSum struct {
 	seed   []byte
 	hashes []string
+	sha    hash.Hash
 }
 
 func NewTarSum(seed []byte) *TarSum {
@@ -74,6 +76,8 @@ func NewTarSum(seed []byte) *TarSum {
 func (t *TarSum) init(seed []byte) *TarSum {
 	t.seed = seed
 	t.hashes = []string{}
+	t.sha = sha256.New()
+	t.sha.Reset()
 	return t
 }
 
@@ -93,27 +97,28 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	headerStr += "gname" + header.Gname
 	headerStr += fmt.Sprintf("devmajor%d", header.Devmajor)
 	headerStr += fmt.Sprintf("devminor%d", header.Devminor)
-	sha := sha256.New()
+	t.sha.Reset()
 	if header.Size > int64(0) {
-		_, err := io.Copy(sha, reader)
+		t.sha.Write([]byte(headerStr))
+		_, err := io.Copy(t.sha, reader)
 		if err != nil {
-			sha.Reset()
-			sha.Write([]byte(headerStr))
+			t.sha.Reset()
+			t.sha.Write([]byte(headerStr))
 		}
 	} else {
-		sha.Write([]byte(headerStr))
+		t.sha.Write([]byte(headerStr))
 	}
-	t.hashes = append(t.hashes, hex.EncodeToString(sha.Sum(nil)))
+	t.hashes = append(t.hashes, hex.EncodeToString(t.sha.Sum(nil)))
 }
 
 func (t *TarSum) Compute() string {
 	sort.Strings(t.hashes)
-	sha := sha256.New()
-	sha.Write(t.seed)
+	t.sha.Reset()
+	t.sha.Write(t.seed)
 	for _, hash := range t.hashes {
-		sha.Write([]byte(hash))
+		t.sha.Write([]byte(hash))
 	}
-	tarsum := hex.EncodeToString(sha.Sum(nil))
+	tarsum := hex.EncodeToString(t.sha.Sum(nil))
 	logger.Debug("[TarSumCompute] return %s", tarsum)
 	return tarsum
 }
