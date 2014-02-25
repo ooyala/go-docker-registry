@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -77,16 +78,12 @@ func (t *TarSum) init(seed []byte) *TarSum {
 }
 
 func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
-	headerStr := ""
-	headerStr += "name" + header.Name
-	if header.Typeflag == tar.TypeDir && !strings.HasSuffix(headerStr, "/") {
-		headerStr += "/"
-	}
+	headerStr := "name" + header.Name
 	headerStr += fmt.Sprintf("mode%d", header.Mode)
 	headerStr += fmt.Sprintf("uid%d", header.Uid)
 	headerStr += fmt.Sprintf("gid%d", header.Gid)
 	headerStr += fmt.Sprintf("size%d", header.Size)
-	headerStr += fmt.Sprintf("mtime%d", header.ModTime.Unix())
+	headerStr += fmt.Sprintf("mtime%d", header.ModTime.UTC().Unix())
 	headerStr += fmt.Sprintf("typeflag%c", header.Typeflag)
 	headerStr += "linkname" + header.Linkname
 	headerStr += "uname" + header.Uname
@@ -95,6 +92,7 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	headerStr += fmt.Sprintf("devminor%d", header.Devminor)
 	sha := sha256.New()
 	if header.Size > int64(0) {
+		sha.Write([]byte(headerStr))
 		_, err := io.Copy(sha, reader)
 		if err != nil {
 			sha.Reset()
@@ -103,7 +101,7 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	} else {
 		sha.Write([]byte(headerStr))
 	}
-	t.hashes = append(t.hashes, fmt.Sprintf("%x", sha.Sum(nil)))
+	t.hashes = append(t.hashes, hex.EncodeToString(sha.Sum(nil)))
 }
 
 func (t *TarSum) Compute() string {
@@ -113,8 +111,8 @@ func (t *TarSum) Compute() string {
 	for _, hash := range t.hashes {
 		sha.Write([]byte(hash))
 	}
-	tarsum := fmt.Sprintf("tarsum+sha256:%x", sha.Sum(nil))
-	logger.Debug("checsums.compute_tarsum: return %s", tarsum)
+	tarsum := "tarsum+sha256:" + hex.EncodeToString(sha.Sum(nil))
+	logger.Debug("[TarSumCompute] return %s", tarsum)
 	return tarsum
 }
 

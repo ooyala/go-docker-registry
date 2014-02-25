@@ -91,7 +91,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !checksums[string(storedSum)] {
-		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum:"+string(storedSum)+" not in %+v", checksums)
+		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum:"+string(storedSum)+" not in %#v", checksums)
 		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
@@ -251,7 +251,7 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 		checksumMap[checksum] = true
 	}
 	if !checksumMap[checksum] {
-		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum:"+checksum+" not in %+v", checksumMap)
+		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum:"+checksum+" not in %#v", checksumMap)
 		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
