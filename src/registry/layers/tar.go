@@ -79,6 +79,9 @@ func (t *TarSum) init(seed []byte) *TarSum {
 
 func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	headerStr := "name" + header.Name
+	if header.Typeflag == tar.TypeDir && !strings.HasSuffix(headerStr, "/") {
+		headerStr += "/"
+	}
 	headerStr += fmt.Sprintf("mode%d", header.Mode)
 	headerStr += fmt.Sprintf("uid%d", header.Uid)
 	headerStr += fmt.Sprintf("gid%d", header.Gid)
@@ -92,7 +95,6 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	headerStr += fmt.Sprintf("devminor%d", header.Devminor)
 	sha := sha256.New()
 	if header.Size > int64(0) {
-		sha.Write([]byte(headerStr))
 		_, err := io.Copy(sha, reader)
 		if err != nil {
 			sha.Reset()
@@ -111,7 +113,7 @@ func (t *TarSum) Compute() string {
 	for _, hash := range t.hashes {
 		sha.Write([]byte(hash))
 	}
-	tarsum := "tarsum+sha256:" + hex.EncodeToString(sha.Sum(nil))
+	tarsum := hex.EncodeToString(sha.Sum(nil))
 	logger.Debug("[TarSumCompute] return %s", tarsum)
 	return tarsum
 }
