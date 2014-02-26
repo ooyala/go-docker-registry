@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"registry/layers"
 	"registry/logger"
@@ -134,9 +135,13 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
 	// decode json from request body
-	dec := json.NewDecoder(r.Body)
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		a.response(w, "Invalid Body: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+		return
+	}
 	var data map[string]interface{}
-	err := dec.Decode(&data)
+	err = json.Unmarshal(bodyBytes, &data)
 	if err != nil {
 		a.response(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
@@ -188,12 +193,7 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Put Mark Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	jsonBytes, err := json.Marshal(&data)
-	if err != nil {
-		a.response(w, "Marshal Json Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
-		return
-	}
-	err = a.Storage.Put(jsonPath, jsonBytes)
+	err = a.Storage.Put(jsonPath, bodyBytes)
 	if err != nil {
 		a.response(w, "Put Json Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
