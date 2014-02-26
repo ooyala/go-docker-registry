@@ -60,7 +60,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// compute checksum while reading. create a TeeReader
 	sha256Writer := sha256.New()
-	sha256Writer.Write(append(jsonContent, byte('\n'))) // write initial json
+	sha256Writer.Write(jsonContent) // write initial json
 	teeReader := io.TeeReader(r.Body, sha256Writer)
 	// this will create the checksums for a tar and the json for tar file info
 	tarInfo := layers.NewTarInfo()
@@ -78,7 +78,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		layers.SetImageFilesCache(a.Storage, imageID, filesJson)
-		checksums[tarInfo.TarSum.Compute(append(jsonContent, byte('\n')))] = true
+		checksums[tarInfo.TarSum.Compute(jsonContent)] = true
 	}
 
 	storedSum, err := a.Storage.Get(storage.ImageChecksumPath(imageID))
