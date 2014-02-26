@@ -87,7 +87,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		cookieString := ""
 		for sum, _ := range checksums {
-			cookieString += sum + ","
+			cookieString += sum + COOKIE_SEPARATOR
 		}
 		cookieString = strings.TrimSuffix(cookieString, COOKIE_SEPARATOR)
 		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: cookieString})
