@@ -28,9 +28,9 @@ type TarInfo struct {
 	Error        error
 }
 
-func NewTarInfo(sumSeed []byte) *TarInfo {
+func NewTarInfo() *TarInfo {
 	return &TarInfo{
-		TarSum:       NewTarSum(sumSeed),
+		TarSum:       NewTarSum(),
 		TarFilesInfo: NewTarFilesInfo(),
 		Error:        nil,
 	}
@@ -64,18 +64,15 @@ func (t *TarInfo) Load(file io.ReadSeeker) {
 }
 
 type TarSum struct {
-	seed   []byte
 	hashes []string
 	sha    hash.Hash
 }
 
-func NewTarSum(seed []byte) *TarSum {
-	logger.Debug("[TarSum] NewTarSum with seed:\n<<%s>>", seed)
-	return (&TarSum{}).init(seed)
+func NewTarSum() *TarSum {
+	return (&TarSum{}).init()
 }
 
-func (t *TarSum) init(seed []byte) *TarSum {
-	t.seed = seed
+func (t *TarSum) init() *TarSum {
 	t.hashes = []string{}
 	t.sha = sha256.New()
 	t.sha.Reset()
@@ -84,9 +81,6 @@ func (t *TarSum) init(seed []byte) *TarSum {
 
 func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	headerStr := "name" + header.Name
-	if header.Typeflag == tar.TypeDir && !strings.HasSuffix(headerStr, "/") {
-		headerStr += "/"
-	}
 	headerStr += fmt.Sprintf("mode%d", header.Mode)
 	headerStr += fmt.Sprintf("uid%d", header.Uid)
 	headerStr += fmt.Sprintf("gid%d", header.Gid)
@@ -103,6 +97,7 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 		t.sha.Write([]byte(headerStr))
 		_, err := io.Copy(t.sha, reader)
 		if err != nil {
+			logger.Debug("[TarSumAppend] error copying to sha: %s", err.Error())
 			t.sha.Reset()
 			t.sha.Write([]byte(headerStr))
 		}
@@ -112,14 +107,15 @@ func (t *TarSum) Append(header *tar.Header, reader io.Reader) {
 	t.hashes = append(t.hashes, hex.EncodeToString(t.sha.Sum(nil)))
 }
 
-func (t *TarSum) Compute() string {
+func (t *TarSum) Compute(seed []byte) string {
+	logger.Debug("[TarSumCompute] seed:\n<<%s>>", seed)
 	sort.Strings(t.hashes)
 	t.sha.Reset()
-	t.sha.Write(t.seed)
+	t.sha.Write(seed)
 	for _, hash := range t.hashes {
 		t.sha.Write([]byte(hash))
 	}
-	tarsum := "tarsum+sha256" + hex.EncodeToString(t.sha.Sum(nil))
+	tarsum := "tarsum+sha256:" + hex.EncodeToString(t.sha.Sum(nil))
 	logger.Debug("[TarSumCompute] return %s", tarsum)
 	return tarsum
 }
