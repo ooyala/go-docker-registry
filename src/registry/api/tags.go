@@ -81,7 +81,7 @@ func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
-	err = a.Storage.Put(storage.RepoTagPath(namespace, repo, tag), data)
+	err = a.Storage.Put(storage.RepoTagPath(namespace, repo, tag), []byte(imageID))
 	if err != nil {
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
