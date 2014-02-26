@@ -15,6 +15,8 @@ import (
 	"strings"
 )
 
+const COOKIE_SEPARATOR = "|"
+
 func (a *RegistryAPI) RequireCompletion(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -87,7 +89,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		for sum, _ := range checksums {
 			cookieString += sum + ","
 		}
-		cookieString = strings.TrimSuffix(cookieString, ",")
+		cookieString = strings.TrimSuffix(cookieString, COOKIE_SEPARATOR)
 		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: cookieString})
 		a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 		return
@@ -248,7 +250,7 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	err = layers.StoreChecksum(a.Storage, imageID, checksum)
 	// extract checksumCookie JSON
 	checksumMap := map[string]bool{}
-	for _, checksum := range strings.Split(checksumCookie.Value, ",") {
+	for _, checksum := range strings.Split(checksumCookie.Value, COOKIE_SEPARATOR) {
 		checksumMap[checksum] = true
 	}
 	if !checksumMap[checksum] {
