@@ -76,6 +76,7 @@ func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	logger.Debug("[PutRepoTag] body:\n%s", data)
+	imageID := strings.Trim(string(data), "\"") // trim quotes
 	if exists, err := a.Storage.Exists(storage.ImageJsonPath(string(data))); err != nil || !exists {
 		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
