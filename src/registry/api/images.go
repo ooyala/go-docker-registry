@@ -146,7 +146,7 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
-	logger.Debug("[PutImageJson] body:\n%+v", data)
+	logger.Debug("[PutImageJson] body:\n%s", bodyBytes)
 	if _, exists := data["id"]; !exists {
 		a.response(w, "Missing key 'id' in JSON", http.StatusBadRequest, EMPTY_HEADERS)
 		return
