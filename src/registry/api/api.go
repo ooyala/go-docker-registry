@@ -151,6 +151,8 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 			w.Write([]byte(typedData))
 		}
 	case []byte:
+		// CR(edanaher): Should we also wrap errors here or below?  Or do errors will always return strings for
+		// data?
 		w.WriteHeader(code)
 		w.Write(typedData)
 	case io.Reader:
@@ -160,6 +162,8 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 		// write json
 		w.WriteHeader(code)
 		enc := json.NewEncoder(w)
+		// CR(edanaher): This seems broken, since enc.Encode could presumably start writing before the error.  I
+		// guess there's not much else to do....
 		if err := enc.Encode(data); err != nil { // cross fingers =P
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

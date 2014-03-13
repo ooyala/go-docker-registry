@@ -30,6 +30,7 @@ type TarInfo struct {
 
 func NewTarInfo() *TarInfo {
 	return &TarInfo{
+		// CR(edanaher): I'd personally prefer these initializers inline instead of function calls.
 		TarSum:       NewTarSum(),
 		TarFilesInfo: NewTarFilesInfo(),
 		Error:        nil,
@@ -164,6 +165,10 @@ func (t *TarFilesInfo) Json() ([]byte, error) {
 			filename = "/" + strings.TrimPrefix(filename, "/.wh.")
 			isDeleted = true
 		}
+		// CR(edanaher): Well, if filename started with /.wh..wh., this could trigger.  Presumably, .wh is a
+		// tombstone (WHiteout) indicating the file was deleted, and if it was recreated, you "delete" the
+		// tombstone, which could conceivable mean a double-tombstone is a no-op.  I feel like it would take more
+		// logic to make that work, but it makes some semblance of sense.
 		if strings.HasPrefix(filename, "/.wh.") {
 			// wtf is this!? isn't this redundant!? just copying from docker-registry 0.6.5
 			continue

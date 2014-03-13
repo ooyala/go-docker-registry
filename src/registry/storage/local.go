@@ -30,6 +30,7 @@ func (s *Local) Get(relpath string) ([]byte, error) {
 }
 
 func (s *Local) Put(relpath string, data []byte) error {
+	// CR(edanaher): That if := ; cond idiom again.
 	file, err := s.createFile(relpath)
 	if err != nil {
 		return err
@@ -95,6 +96,7 @@ func (s *Local) Size(relpath string) (int64, error) {
 }
 
 func (s *Local) Remove(relpath string) error {
+	// CR(edanaher): Shouldn't this use abspath?  relpath with probably never exist...
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}
@@ -103,6 +105,9 @@ func (s *Local) Remove(relpath string) error {
 	if err != nil {
 		return err
 	}
+	// CR(edanaher): I'm not sure how I feel about this loop; at first I thought you forgot to replace the
+	// comment with code, then realized it's purely explanatory.  On the other hand, it is cute.  Also,
+	// s/directires/directories/ in the comment.
 	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
 		// loop over parent directires and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
@@ -111,6 +116,7 @@ func (s *Local) Remove(relpath string) error {
 }
 
 func (s *Local) RemoveAll(relpath string) error {
+	// CR(edanaher): Shouldn't this use abspath?  relpath with probably never exist...
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}

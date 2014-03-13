@@ -9,6 +9,7 @@ import (
 )
 
 // this function takes both []byte and []map[string]interface{} to shortcut in some cases.
+// CR(edanaher): Line length.
 func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalBytes []byte, additional []map[string]interface{}) error {
 	path := storage.RepoIndexImagesPath(namespace, repo)
 	// get previous content
@@ -25,6 +26,8 @@ func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalByte
 		// nothing in previous, just put the data
 		return s.Put(path, additionalBytes)
 	}
+	// CR(edanaher): Could this comment be extended explaining how the merge works and why the checksum is
+	// relevant?  (See ten lines down).
 	// merge previous with current
 	newImagesMap := map[string]map[string]interface{}{}
 	for _, value := range additional {
@@ -34,6 +37,7 @@ func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalByte
 			return errors.New("Invalid Data")
 		}
 		if imageData, ok := newImagesMap[id]; ok {
+			// CR(edanaher): Why is the checksum required here?
 			if _, ok := imageData["checksum"]; ok {
 				continue
 			}
@@ -53,6 +57,7 @@ func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalByte
 		}
 		newImagesMap[id] = value
 	}
+	// CR(edanaher): This use of i is ugly, but Go doesn't really have a nicer way, does it?
 	newImagesArr := make([]map[string]interface{}, len(newImagesMap))
 	i := 0
 	for _, image := range newImagesMap {
@@ -74,9 +79,12 @@ func SetImageFilesCache(s storage.Storage, imageID string, filesJson []byte) err
 	return s.Put(storage.ImageFilesPath(imageID), filesJson)
 }
 
+// CR(edanaher): typos: s/givem/given; s/Dowload/Download/
 // return json file listing for givem image id
 // Dowload the specified layer and determine the file contents. If the cache already exists, just return it.
 func GetImageFilesJson(s storage.Storage, imageID string) ([]byte, error) {
+	// CR(edanaher): This comment isn't helpful; check if cache exists, and if there's an error, presumably
+	// meaning the cache doesn't exist, return what the cache gave you?  That seems backwards.
 	// check if cache exists
 	filesJson, err := GetImageFilesCache(s, imageID)
 	if err != nil {
@@ -87,6 +95,7 @@ func GetImageFilesJson(s storage.Storage, imageID string) ([]byte, error) {
 	// docker-registry 0.6.5 has an lzma decompress here. it actually doesn't seem to be used so i've omitted it
 	// will add it later if need be.
 	tarFilesInfo := NewTarFilesInfo()
+	// CR(edanaher): Why isn't this the if ... := ; err != nil idio used in the next condition?
 	reader, err := s.GetReader(storage.ImageLayerPath(imageID))
 	if err != nil {
 		return nil, err
@@ -109,8 +118,10 @@ func GenerateAncestry(s storage.Storage, imageID, parentID string) error {
 	logger.Debug("[GenerateAncestry] imageID=" + imageID + " parentID=" + parentID)
 	path := storage.ImageAncestryPath(imageID)
 	if parentID == "" {
+		// CR(edanaher): Maybe use backquotes instead of escaping the quote?
 		return s.Put(path, []byte("[\""+imageID+"\"]"))
 	}
+	// CR(edanaher): Again, the if ... := ; err != nil idiom seems appropriate.  Also later in the file.
 	content, err := s.Get(storage.ImageAncestryPath(parentID))
 	if err != nil {
 		return err
@@ -131,6 +142,8 @@ func GetImageDiffCache(s storage.Storage, imageID string) ([]byte, error) {
 	if exists, _ := s.Exists(path); exists {
 		return s.Get(storage.ImageDiffPath(imageID))
 	}
+	// CR(edanaher): I'm not sure how I feel about this special case; you really want a three-state error type
+	// that indicates miss/successful hit/cache error...
 	return nil, nil // nil error, because cache missed
 }
 
@@ -186,6 +199,7 @@ func GenDiff(s storage.Storage, imageID string) {
 	changed := map[string][]interface{}{}
 	created := map[string][]interface{}{}
 
+	// CR(edanaher): Isn't this just `for i, anID := range ancestry`?
 	for i := 1; i < len(ancestry); i++ {
 		anID := ancestry[i]
 		anInfoMap, err := fileInfoMap(s, anID)
@@ -194,8 +208,10 @@ func GenDiff(s storage.Storage, imageID string) {
 			logger.Error("[GenDiff][" + imageID + "] error getting ancestor " + anID + " files info: " + err.Error())
 			return
 		}
+		// CR(edanaher): This loop looks reasonable, but I didn't check the logic in detail.
 		for fname, info := range infoMap {
 			isDeleted, ok := (info[1]).(bool)
+			// CR(edanaher): The comment is hard to parse (and is a long line).
 			if !ok || isDeleted { // !ok because it should technically never happen, but if it does just mark it as deleted
 				if !ok {
 					logger.Error("[GenDiff][" + imageID + "] file info is in a bad format")
@@ -245,6 +261,7 @@ func GenDiff(s storage.Storage, imageID string) {
 	}
 }
 
+// CR(edanaher): This function is mysterious.
 func fileInfoMap(s storage.Storage, imageID string) (map[string][]interface{}, error) {
 	fContent, err := GetImageFilesJson(s, imageID)
 	if err != nil {

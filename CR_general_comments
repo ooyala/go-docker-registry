@@ -1,0 +1,15 @@
+CR(edanaher):
+
+This branch contains a bunch of CR(edanaher) comments indicating my code review.  Comments appear in typical
+comment fashion above the relevant code, rather than the typical CR-style of below the code.
+
+Logging seems inconsistent.  Could make troubleshooting painful.
+
+Having a return after error error case seems like a waste of lines.  Stupid Go.
+
+Lots of "might there be other types of errors" comments; we don't have to check all of them, but it's
+misleading to give back "repository not found" when the image is there, but there was a 500 from Amazon
+trying to delete the image.  Either be more precise in checking or less specific in the message ("Image not
+found or other error deleting image")
+
+Lots of missed opportunities for "if err := f(); err != nil";  I marked the first few.

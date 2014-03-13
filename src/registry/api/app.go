@@ -6,6 +6,7 @@ import (
 )
 
 func (a *RegistryAPI) HomeHandler(w http.ResponseWriter, r *http.Request) {
+	// CR(edanaher): It might be nice to have a more informative message.
 	fmt.Fprintln(w, "go-docker-registry server")
 }
 
