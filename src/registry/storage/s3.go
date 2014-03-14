@@ -41,16 +41,13 @@ func (s *S3) getAuth() (err error) {
 	if s.s3 != nil {
 		s.s3.Auth = s.auth
 	}
-	// CR(edanaher): Wow, go requires this.  Stupid go.
 	return
 }
 
 func (s *S3) updateAuth() {
 	s.authLock.Lock()
 	defer s.authLock.Unlock()
-	// CR(edanaher): Why isn't err := s.getAuth the initializer in the loop?
-	err := s.getAuth()
-	for ; err != nil; err = s.getAuth() {
+	for err := s.getAuth(); err != nil; err = s.getAuth() {
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -119,8 +116,6 @@ func (s *S3) Get(relpath string) ([]byte, error) {
 }
 
 func (s *S3) Put(relpath string, data []byte) error {
-	// CR(edanaher): Should this (and other write operations) be a WLock?  AFAICT, you use a RWMutex, yet only
-	// RLock it...
 	s.authLock.RLock()
 	defer s.authLock.RUnlock()
 	return s.bucket.Put(s.key(relpath), data, S3_CONTENT_TYPE, s3.Private, S3_OPTIONS)
@@ -164,13 +159,12 @@ func (s *S3) List(relpath string) ([]string, error) {
 		}
 	}
 	for i, prefix := range result.CommonPrefixes {
-		// CR(edanaher): Perhaps assign i+len(result.Contents) to a variable?  The repetition is hard to read and
-		// error-prone. Also, the comment is incomplete, since you're also trimming s.root.  And what is the
-		// conditional doing?
-		// trim trailing "/"
-		names[i+len(result.Contents)] = strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
-		if !strings.HasPrefix(names[i+len(result.Contents)], "/") {
-			names[i+len(result.Contents)] = "/" + names[i+len(result.Contents)]
+		prefixIdx := i+len(result.Contents)
+		// trim trailing "/" and preceeding s.root
+		names[prefixIdx] = strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
+		// if there is no preceeding / then add it
+		if !strings.HasPrefix(names[prefixIdx], "/") {
+			names[prefixIdx] = "/" + names[prefixIdx]
 		}
 	}
 	if len(names) == 0 {

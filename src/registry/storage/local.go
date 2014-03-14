@@ -29,10 +29,9 @@ func (s *Local) Get(relpath string) ([]byte, error) {
 	return ioutil.ReadFile(path.Join(s.Root, relpath))
 }
 
-func (s *Local) Put(relpath string, data []byte) error {
-	// CR(edanaher): That if := ; cond idiom again.
-	file, err := s.createFile(relpath)
-	if err != nil {
+func (s *Local) Put(relpath string, data []byte) (err error) {
+	var file *os.File
+	if file, err = s.createFile(relpath); err != nil {
 		return err
 	}
 	defer file.Close()
@@ -96,7 +95,7 @@ func (s *Local) Size(relpath string) (int64, error) {
 }
 
 func (s *Local) Remove(relpath string) error {
-	// CR(edanaher): Shouldn't this use abspath?  relpath with probably never exist...
+	// this is not abspath because Exists uses relpath
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}
@@ -105,18 +104,15 @@ func (s *Local) Remove(relpath string) error {
 	if err != nil {
 		return err
 	}
-	// CR(edanaher): I'm not sure how I feel about this loop; at first I thought you forgot to replace the
-	// comment with code, then realized it's purely explanatory.  On the other hand, it is cute.  Also,
-	// s/directires/directories/ in the comment.
 	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
-		// loop over parent directires and remove them if empty
+		// loop over parent directores and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
 	}
 	return nil
 }
 
 func (s *Local) RemoveAll(relpath string) error {
-	// CR(edanaher): Shouldn't this use abspath?  relpath with probably never exist...
+	// this is not abspath because Exists uses relpath
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}

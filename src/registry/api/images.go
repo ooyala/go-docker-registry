@@ -29,20 +29,16 @@ func (a *RegistryAPI) RequireCompletion(handler http.HandlerFunc) http.HandlerFu
 	}
 }
 
-// CR(edanaher): What are these comments?  Preconditions/expectations?  Random function names don't make great
-// comments...
-// RequiresCompletion
-// CheckIfModifiedSince
-// Sets DefaultCacheHeaders
+// Must be wrapped by: RequiresCompletion, CheckIfModifiedSince
+// Sets: DefaultCacheHeaders
 func (a *RegistryAPI) GetImageLayerHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
 	headers := DefaultCacheHeaders()
 	reader, err := a.Storage.GetReader(storage.ImageLayerPath(imageID))
 	if err != nil {
-		// CR(edanaher): Are any other types of errors possible (e.g., transient s3 failure?)?  This applies to
 		// every "Image not found" response in this file.
-		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	a.response(w, reader, http.StatusOK, headers)
@@ -53,7 +49,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	imageID := vars["imageID"]
 	jsonContent, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	layerPath := storage.ImageLayerPath(imageID)
@@ -64,13 +60,12 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		a.response(w, "Image already exists", http.StatusConflict, EMPTY_HEADERS)
 		return
 	}
-	// CR(edanaher): comment consistency nitpick: "compute checksum" is imperative, "this will create the
-	// checksums" is not.  I'm also not entirely sure either is useful.  Though this whole sequence is fairly
-	// convoluted; a 2-3 line overall comment might not be out of place.
-	// compute checksum while reading. create a TeeReader
+	// This next section reads the tarball from the body while computing various checksums. sha256Writer is used
+	// to compute a checksum of the entire tarball using a TeeReader which will read from the body while
+	// simultaneously writing what it read to sha256Writer. tarInfo will read the tar after it is put into the
+	// storage and checksum each individual file within it (and checksum those checksums with the jsonContent)
 	sha256Writer := sha256.New()
-	// CR(edanaher): i++; // increment i.
-	sha256Writer.Write(jsonContent) // write initial json
+	sha256Writer.Write(jsonContent)
 	teeReader := io.TeeReader(r.Body, sha256Writer)
 	// this will create the checksums for a tar and the json for tar file info
 	tarInfo := layers.NewTarInfo()
@@ -115,27 +110,23 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
-// CR(edanaher): Again with the random function name comments.
-// RequiresCompletion
-// CheckIfModifiedSince
-// Sets DefaultCacheHeaders
+// Must be wrapped by: RequiresCompletion, CheckIfModifiedSince
+// Sets: DefaultCacheHeaders
 func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
-	// CR(edanaher): So if this fails, we just don't give a size?  Would it make more sense to just 500?
+	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
 	size, err := a.Storage.Size(storage.ImageLayerPath(imageID))
 	if err == nil {
 		headers["X-Docker-Size"] = []string{fmt.Sprintf("%d", size)}
 	}
-	// CR(edanaher): Similarly, this looks to me like we ignore missing checksums, which seems a bit sketchy.
-	// If the header is missing, that seems to make it more likely than usual that the image itself is
-	// corrupted...
+	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
 		checksum, err := a.Storage.Get(checksumPath)
@@ -146,18 +137,13 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	a.response(w, data, http.StatusOK, headers)
 }
 
-// CR(edanaher): It seems to me that if anything goes wrong here, the storage will be left in a bad state
-// (e.g., markPath exists, but the other files don't).  This could break future requests for the image.  Is
-// there a way to clean it up?
 func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
 	// decode json from request body
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		// CR(edanaher): Isn't this more "error reading body"?  It certainly seems to me that it should never
-		// happen...
-		a.response(w, "Invalid Body: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+		a.response(w, "Error Reading Body: "+err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	var data map[string]interface{}
@@ -171,8 +157,12 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Missing key 'id' in JSON", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
-	// CR(edanaher): So the client can omit the checksum?  Seems to me that it should be required...  Also,
-	// AFAICT, we don't check it here.  Maybe it's checked later?
+	dataID, ok := data["id"].(string)
+	if !ok {
+		a.response(w, "Invalid JSON: 'id' is not a string", http.StatusBadRequest, EMPTY_HEADERS)
+		return
+	}
+	// only time checksum won't exist is if a PutImage request failed and we're retrying
 	checksum := r.Header.Get("X-Docker-Checksum")
 	if checksum == "" {
 		// remove the old checksum in case it's a retry after a fail
@@ -181,16 +171,8 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
-	// CR(edanaher): Not a big deal, but I'd expect id to be verified above where its existence is checked.
-	dataID, ok := data["id"].(string)
-	if !ok {
-		a.response(w, "Invalid JSON: 'id' is not a string", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
 	if imageID != dataID {
-		// CR(edanaher): I think something along the lines of "JSON data id disagrees with query param imageId"
-		// would be clearer.
-		a.response(w, "JSON data contains invalid id", http.StatusBadRequest, EMPTY_HEADERS)
+		a.response(w, "JSON image id != image id specified in path", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	var parentID string
@@ -209,8 +191,7 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	markPath := storage.ImageMarkPath(imageID)
 	if exists, _ := a.Storage.Exists(jsonPath); exists {
 		if markExists, _ := a.Storage.Exists(markPath); !markExists {
-			// CR(edanaher): s/409/http.StatusConflict/
-			a.response(w, "Image already exists", 409, EMPTY_HEADERS)
+			a.response(w, "Image already exists", http.StatusConflict, EMPTY_HEADERS)
 			return
 		}
 	}
@@ -231,16 +212,15 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 	a.response(w, "true", http.StatusOK, EMPTY_HEADERS)
 }
 
-// RequiresCompletion
-// CheckIfModifiedSince
-// Sets DefaultCacheHeaders
+// Must be wrapped by: RequiresCompletion, CheckIfModifiedSince
+// Sets: DefaultCacheHeaders
 func (a *RegistryAPI) GetImageAncestryHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageAncestryPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	a.response(w, data, http.StatusOK, headers)
@@ -263,13 +243,12 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	}
 	// check if image json exists
 	if exists, _ := a.Storage.Exists(storage.ImageJsonPath(imageID)); !exists {
-		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	markPath := storage.ImageMarkPath(imageID)
 	if exists, _ := a.Storage.Exists(markPath); !exists {
-		// CR(edanaher): s/409/http.StatusConflict/
-		a.response(w, "Cannot set this image checksum (mark path does not exist)", 409, EMPTY_HEADERS)
+		a.response(w, "Cannot set this image checksum (mark path does not exist)", http.StatusConflict, EMPTY_HEADERS)
 		return
 	}
 	err = layers.StoreChecksum(a.Storage, imageID, checksum)
@@ -287,9 +266,8 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
-// RequiresCompletion
-// CheckIfModifiedSince
-// Sets DefaultCacheHeaders
+// Must be wrapped by: RequiresCompletion, CheckIfModifiedSince
+// Sets: DefaultCacheHeaders
 func (a *RegistryAPI) GetImageFilesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
@@ -298,20 +276,18 @@ func (a *RegistryAPI) GetImageFilesHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch err.(type) {
 		case layers.TarError:
-			// CR(edanaher): Couldn't this also be a broken/corrupted tar file?
 			a.response(w, "Layer format not supported", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		default:
-			a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
+			a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 			return
 		}
 	}
 	a.response(w, data, http.StatusOK, headers)
 }
 
-// RequiresCompletion
-// CheckIfModifiedSince
-// Sets DefaultCacheHeaders
+// Must be wrapped by: RequiresCompletion, CheckIfModifiedSince
+// Sets: DefaultCacheHeaders
 func (a *RegistryAPI) GetImageDiffHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
@@ -327,6 +303,6 @@ func (a *RegistryAPI) GetImageDiffHandler(w http.ResponseWriter, r *http.Request
 		go layers.GenDiff(a.Storage, imageID)
 		diffJson = []byte{}
 	}
-	// CR(edanaher): So the response to the client depends on if the diff was cached?  Seems a bit sketchy.
+	// copied from docker-registry. not sure why we would return StatusOK when the cache missed...
 	a.response(w, diffJson, http.StatusOK, headers)
 }
