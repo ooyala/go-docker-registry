@@ -197,7 +197,7 @@ func GenDiff(s storage.Storage, imageID string) {
 			return
 		}
 		for fname, info := range infoMap {
-			isDeleted, isBool := (info[2]).(bool)
+			isDeleted, isBool := (info[1]).(bool)
 			// if the file info is in a bad format (isDeleted is not a bool), we should just assume it is deleted.
 			// technically isBool should never be false.
 			if !isBool || isDeleted {
@@ -213,7 +213,7 @@ func GenDiff(s storage.Storage, imageID string) {
 				// doesn't exist, must be created. do nothing.
 				continue
 			}
-			isDeleted, isBool = anInfo[2].(bool)
+			isDeleted, isBool = anInfo[1].(bool)
 			if !isBool || isDeleted {
 				if !isBool {
 					logger.Error("[GenDiff][" + imageID + "] file info is in a bad format")
