@@ -29,9 +29,9 @@ func (s *Local) Get(relpath string) ([]byte, error) {
 	return ioutil.ReadFile(path.Join(s.Root, relpath))
 }
 
-func (s *Local) Put(relpath string, data []byte) error {
-	file, err := s.createFile(relpath)
-	if err != nil {
+func (s *Local) Put(relpath string, data []byte) (err error) {
+	var file *os.File
+	if file, err = s.createFile(relpath); err != nil {
 		return err
 	}
 	defer file.Close()
@@ -95,6 +95,7 @@ func (s *Local) Size(relpath string) (int64, error) {
 }
 
 func (s *Local) Remove(relpath string) error {
+	// this is not abspath because Exists uses relpath
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}
@@ -104,13 +105,14 @@ func (s *Local) Remove(relpath string) error {
 		return err
 	}
 	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
-		// loop over parent directires and remove them if empty
+		// loop over parent directories and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
 	}
 	return nil
 }
 
 func (s *Local) RemoveAll(relpath string) error {
+	// this is not abspath because Exists uses relpath
 	if ok, err := s.Exists(relpath); !ok || err != nil {
 		return errors.New("no such file or directory: " + relpath)
 	}

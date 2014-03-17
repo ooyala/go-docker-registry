@@ -151,6 +151,7 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 			w.Write([]byte(typedData))
 		}
 	case []byte:
+		// no need to wrap error here because if data comes in as a []byte it is meant to be raw data
 		w.WriteHeader(code)
 		w.Write(typedData)
 	case io.Reader:
@@ -158,12 +159,17 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 		io.Copy(w, typedData)
 	default:
 		// write json
-		w.WriteHeader(code)
-		enc := json.NewEncoder(w)
-		if err := enc.Encode(data); err != nil { // cross fingers =P
+		if encoded, err := json.Marshal(data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(code)
+			w.Write(encoded)
 		}
 	}
+}
+
+func (a *RegistryAPI) internalError(w http.ResponseWriter, text string) {
+	a.response(w, "Internal Error: " + text, http.StatusInternalServerError, EMPTY_HEADERS)
 }
 
 func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {

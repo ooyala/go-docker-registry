@@ -148,6 +148,19 @@ func (t *TarFilesInfo) Append(h *tar.Header) {
 	t.headers = append(t.headers, h)
 }
 
+// This function returns json containing a slice of file info objects
+// file info is a weird tuple (why it isn't just a map i have no idea)
+// file info:
+// [
+//   filename,
+//   file type,
+//   is deleted,
+//   size,
+//   mod time,
+//   mode,
+//   uid,
+//   gid
+// ]
 func (t *TarFilesInfo) Json() ([]byte, error) {
 	// convert to the weird tuple docker-registry 0.6.5 uses (why wasn't this just a map!?)
 	tupleSlice := [][]interface{}{}
@@ -164,8 +177,11 @@ func (t *TarFilesInfo) Json() ([]byte, error) {
 			filename = "/" + strings.TrimPrefix(filename, "/.wh.")
 			isDeleted = true
 		}
+		// NOTE(edanaher): Well, if filename started with /.wh..wh., this could trigger.  Presumably, .wh is a
+		// tombstone (WHiteout) indicating the file was deleted, and if it was recreated, you "delete" the
+		// tombstone, which could conceivable mean a double-tombstone is a no-op.  I feel like it would take more
+		// logic to make that work, but it makes some semblance of sense.
 		if strings.HasPrefix(filename, "/.wh.") {
-			// wtf is this!? isn't this redundant!? just copying from docker-registry 0.6.5
 			continue
 		}
 

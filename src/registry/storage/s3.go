@@ -47,8 +47,7 @@ func (s *S3) getAuth() (err error) {
 func (s *S3) updateAuth() {
 	s.authLock.Lock()
 	defer s.authLock.Unlock()
-	err := s.getAuth()
-	for ; err != nil; err = s.getAuth() {
+	for err := s.getAuth(); err != nil; err = s.getAuth() {
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -160,10 +159,12 @@ func (s *S3) List(relpath string) ([]string, error) {
 		}
 	}
 	for i, prefix := range result.CommonPrefixes {
-		// trim trailing "/"
-		names[i+len(result.Contents)] = strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
-		if !strings.HasPrefix(names[i+len(result.Contents)], "/") {
-			names[i+len(result.Contents)] = "/" + names[i+len(result.Contents)]
+		prefixIdx := i+len(result.Contents)
+		// trim trailing "/" and preceeding s.root
+		names[prefixIdx] = strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), s.root)
+		// if there is no preceeding / then add it
+		if !strings.HasPrefix(names[prefixIdx], "/") {
+			names[prefixIdx] = "/" + names[prefixIdx]
 		}
 	}
 	if len(names) == 0 {
