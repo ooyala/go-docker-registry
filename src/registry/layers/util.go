@@ -79,7 +79,7 @@ func SetImageFilesCache(s storage.Storage, imageID string, filesJson []byte) err
 // return json file listing for given image id
 // Download the specified layer and determine the file contents. If the cache already exists, just return it.
 func GetImageFilesJson(s storage.Storage, imageID string) ([]byte, error) {
-	// if the files json exist in the cache, return it
+	// if the files json exists in the cache, return it
 	filesJson, err := GetImageFilesCache(s, imageID)
 	if err != nil {
 		return filesJson, nil

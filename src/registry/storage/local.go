@@ -105,7 +105,7 @@ func (s *Local) Remove(relpath string) error {
 		return err
 	}
 	for absdir := path.Dir(abspath); s.removeIfEmpty(absdir); absdir = path.Dir(absdir) {
-		// loop over parent directores and remove them if empty
+		// loop over parent directories and remove them if empty
 		// we do this because that is how s3 looks since it is purely a key-value store
 	}
 	return nil
