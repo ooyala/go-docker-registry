@@ -38,7 +38,7 @@ func (a *RegistryAPI) GetImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	reader, err := a.Storage.GetReader(storage.ImageLayerPath(imageID))
 	if err != nil {
 		// every "Image not found" response in this file.
-		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	a.response(w, reader, http.StatusOK, headers)
@@ -49,7 +49,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	imageID := vars["imageID"]
 	jsonContent, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	layerPath := storage.ImageLayerPath(imageID)
@@ -118,7 +118,7 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageJsonPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
@@ -220,7 +220,7 @@ func (a *RegistryAPI) GetImageAncestryHandler(w http.ResponseWriter, r *http.Req
 	headers := DefaultCacheHeaders()
 	data, err := a.Storage.Get(storage.ImageAncestryPath(imageID))
 	if err != nil {
-		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	a.response(w, data, http.StatusOK, headers)
@@ -243,7 +243,7 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	}
 	// check if image json exists
 	if exists, _ := a.Storage.Exists(storage.ImageJsonPath(imageID)); !exists {
-		a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	markPath := storage.ImageMarkPath(imageID)
@@ -279,7 +279,7 @@ func (a *RegistryAPI) GetImageFilesHandler(w http.ResponseWriter, r *http.Reques
 			a.response(w, "Layer format not supported", http.StatusBadRequest, EMPTY_HEADERS)
 			return
 		default:
-			a.response(w, "Image not found: " + err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+			a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
 			return
 		}
 	}
