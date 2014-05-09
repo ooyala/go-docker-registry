@@ -1,4 +1,4 @@
-go-docker-registry
+go-docker-registry [![build status](https://secure.travis-ci.org/ooyala/go-docker-registry.png?branch=master)](http://travis-ci.org/ooyala/go-docker-registry)
 ==================
 
 Docker Registry Written in Go
