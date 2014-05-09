@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"github.com/cespare/go-apachelog"
 	"github.com/gorilla/mux"
+	"github.com/ooyala/go-docker-registry/src/registry/storage"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
-	"registry/storage"
 )
 
 var USER_AGENT_REGEXP = regexp.MustCompile("([^\\s/]+)/([^\\s/]+)")
@@ -169,7 +169,7 @@ func (a *RegistryAPI) response(w http.ResponseWriter, data interface{}, code int
 }
 
 func (a *RegistryAPI) internalError(w http.ResponseWriter, text string) {
-	a.response(w, "Internal Error: " + text, http.StatusInternalServerError, EMPTY_HEADERS)
+	a.response(w, "Internal Error: "+text, http.StatusInternalServerError, EMPTY_HEADERS)
 }
 
 func NotImplementedHandler(w http.ResponseWriter, r *http.Request) {

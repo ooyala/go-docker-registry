@@ -2,9 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/ooyala/go-docker-registry/src/registry/api"
+	"github.com/ooyala/go-docker-registry/src/registry/storage"
 	"os"
-	"registry/api"
-	"registry/storage"
 )
 
 type Config struct {
