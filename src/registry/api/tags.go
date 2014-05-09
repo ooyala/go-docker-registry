@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/ooyala/go-docker-registry/src/registry/logger"
+	"github.com/ooyala/go-docker-registry/src/registry/storage"
 	"io/ioutil"
 	"net/http"
 	"path"
-	"registry/logger"
-	"registry/storage"
 	"strings"
 	"time"
 )
