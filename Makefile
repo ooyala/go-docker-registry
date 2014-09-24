@@ -16,11 +16,11 @@ clean:
 init: clean
 	@mkdir bin
 
-build: init pkg
+build: init pkgs
 	@go build -o bin/registry registry.go
 
-.PHONY: pkg
-pkg:
+.PHONY: pkgs
+pkgs:
 	for p in $(PKGS); do go install $$p; done
 
 test: clean
