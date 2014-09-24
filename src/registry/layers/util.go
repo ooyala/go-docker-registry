@@ -3,14 +3,14 @@ package layers
 import (
 	"encoding/json"
 	"errors"
-	"registry/logger"
-	"registry/storage"
+	"github.com/ooyala/go-docker-registry/src/registry/logger"
+	"github.com/ooyala/go-docker-registry/src/registry/storage"
 	"strings"
 )
 
 // this function takes both []byte and []map[string]interface{} to shortcut in some cases.
 func UpdateIndexImages(s storage.Storage, namespace, repo string, additionalBytes []byte,
-		additional []map[string]interface{}) error {
+	additional []map[string]interface{}) error {
 	path := storage.RepoIndexImagesPath(namespace, repo)
 	// get previous content
 	previousData, err := s.Get(path)
