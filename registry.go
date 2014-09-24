@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/ooyala/go-docker-registry/src/registry/api"
-	"github.com/ooyala/go-docker-registry/src/registry/config"
-	"github.com/ooyala/go-docker-registry/src/registry/logger"
-	"github.com/ooyala/go-docker-registry/src/registry/storage"
+	"registry/api"
+	"registry/config"
+	"registry/logger"
+	"registry/storage"
 )
 
 func main() {

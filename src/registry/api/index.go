@@ -2,9 +2,9 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/ooyala/go-docker-registry/src/registry/layers"
-	"github.com/ooyala/go-docker-registry/src/registry/logger"
-	"github.com/ooyala/go-docker-registry/src/registry/storage"
+	"registry/layers"
+	"registry/logger"
+	"registry/storage"
 	"io/ioutil"
 	"net/http"
 )

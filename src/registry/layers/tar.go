@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ooyala/go-docker-registry/src/registry/logger"
+	"registry/logger"
 	"hash"
 	"io"
 	"sort"

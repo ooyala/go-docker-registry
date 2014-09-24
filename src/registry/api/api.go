@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/cespare/go-apachelog"
 	"github.com/gorilla/mux"
-	"github.com/ooyala/go-docker-registry/src/registry/storage"
+	"registry/storage"
 	"io"
 	"log"
 	"net/http"
