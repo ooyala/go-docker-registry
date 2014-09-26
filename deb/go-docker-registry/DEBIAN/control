@@ -1,4 +1,4 @@
-Package: atlantis-registry
+Package: go-docker-registry
 Version: __VERSION__
 Section: base
 Priority: Optional
