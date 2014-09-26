@@ -3,8 +3,8 @@ package layers
 import (
 	"encoding/json"
 	"errors"
-	"github.com/ooyala/go-docker-registry/src/registry/logger"
-	"github.com/ooyala/go-docker-registry/src/registry/storage"
+	"registry/logger"
+	"registry/storage"
 	"strings"
 )
 

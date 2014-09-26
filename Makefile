@@ -4,16 +4,24 @@ VENDOR_PATH  := $(PROJECT_ROOT)/vendor
 GOPATH := $(GOPATH):$(PROJECT_ROOT):$(VENDOR_PATH)
 export GOPATH
 
+PKGS := github.com/cespare/go-apachelog
+PKGS += github.com/crowdmob/goamz/aws
+PKGS += github.com/crowdmob/goamz/s3
+
 all: build
 
 clean:
-	@rm -rf bin $(PKG_DIR) $(VENDOR_PATH)/bin $(VENDOR_PATH)/pkg
+	@rm -rf bin pkg $(VENDOR_PATH)/bin $(VENDOR_PATH)/pkg
 
 init: clean
 	@mkdir bin
 
-build: init
+build: init pkgs
 	@go build -o bin/registry registry.go
+
+.PHONY: pkgs
+pkgs:
+	for p in $(PKGS); do go install $$p; done
 
 test: clean
 ifdef TEST_PACKAGE

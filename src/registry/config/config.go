@@ -2,8 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/ooyala/go-docker-registry/src/registry/api"
-	"github.com/ooyala/go-docker-registry/src/registry/storage"
+	"registry/api"
+	"registry/storage"
 	"os"
 )
 
