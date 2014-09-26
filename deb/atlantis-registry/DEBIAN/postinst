@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "reviving registry..."
+cd /etc/service
+ln -s /opt/atlantis/registry atlantis-registry
+i=0
+while [ -z "$(pidof registry)" ] && [ $i -lt 10 ]; do
+  echo "waiting for registry to revive..."
+  sleep 1
+  if [ -p /opt/atlantis/registry/supervise/ok ]; then
+    sv up atlantis-registry
+  fi
+  (( i++ ))
+done
+if [ $i -eq 10 ]; then
+  echo "could not revive registry."
+  exit 1
+fi
+echo "registry revived."

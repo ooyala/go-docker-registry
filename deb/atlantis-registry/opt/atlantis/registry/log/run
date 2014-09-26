@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec svlogd -ttt /var/log/atlantis/registry

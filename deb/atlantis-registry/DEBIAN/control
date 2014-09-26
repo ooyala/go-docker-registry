@@ -1,0 +1,8 @@
+Package: atlantis-registry
+Version: __VERSION__
+Section: base
+Priority: Optional
+Architecture: amd64
+Depends: runit
+Maintainer: appsplat-team@ooyala.com
+Description: Go implementation of docker registry.
