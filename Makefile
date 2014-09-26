@@ -1,5 +1,8 @@
+SEMVER := 0.1.0
+
 PROJECT_ROOT := $(shell pwd)
 VENDOR_PATH  := $(PROJECT_ROOT)/vendor
+PROJECT_NAME := $(shell pwd | xargs basename)
 
 GOPATH := $(GOPATH):$(PROJECT_ROOT):$(VENDOR_PATH)
 export GOPATH
@@ -11,7 +14,7 @@ PKGS += github.com/crowdmob/goamz/s3
 all: build
 
 clean:
-	@rm -rf bin pkg $(VENDOR_PATH)/bin $(VENDOR_PATH)/pkg
+	@rm -rf bin pkg $(VENDOR_PATH)/bin $(VENDOR_PATH)/pkg *.deb
 
 init: clean
 	@mkdir bin
@@ -49,3 +52,13 @@ endif
 fmt:
 	@gofmt -l -w registry.go
 	@find src -name \*.go -exec gofmt -l -w {} \;
+
+DEB_STAGING := $(PROJECT_ROOT)/staging
+PKG_INSTALL_DIR := $(DEB_STAGING)/$(PROJECT_NAME)/opt/go-docker-registry
+
+deb: clean build
+	@cp -a $(PROJECT_ROOT)/deb $(DEB_STAGING)
+	@cp -a $(PROJECT_ROOT)/bin $(PKG_INSTALL_DIR)/
+	@perl -p -i -e "s/__VERSION__/$(SEMVER)/g" $(DEB_STAGING)/$(PROJECT_NAME)/DEBIAN/control
+	@cd $(DEB_STAGING) && dpkg --build $(PROJECT_NAME) $(PROJECT_ROOT)
+	@rm -rf $(DEB_STAGING)
