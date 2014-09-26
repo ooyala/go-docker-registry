@@ -1,3 +1,0 @@
-#!/bin/bash
-
-exec ./bin/registry -config /etc/atlantis/registry/config.json 2>&1

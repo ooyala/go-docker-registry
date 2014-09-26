@@ -2,13 +2,13 @@
 
 echo "reviving registry..."
 cd /etc/service
-ln -s /opt/atlantis/registry atlantis-registry
+ln -s /opt/go-docker-registry go-docker-registry
 i=0
 while [ -z "$(pidof registry)" ] && [ $i -lt 10 ]; do
   echo "waiting for registry to revive..."
   sleep 1
-  if [ -p /opt/atlantis/registry/supervise/ok ]; then
-    sv up atlantis-registry
+  if [ -p /opt/go-docker-registry/supervise/ok ]; then
+    sv up go-docker-registry
   fi
   (( i++ ))
 done
