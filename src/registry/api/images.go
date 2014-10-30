@@ -87,7 +87,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	storedSum, err := a.Storage.Get(storage.ImageChecksumPath(imageID))
-	if err != nil {
+	if err == nil {
 		cookieString := ""
 		for sum, _ := range checksums {
 			cookieString += sum + COOKIE_SEPARATOR
@@ -130,7 +130,7 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
 		checksum, err := a.Storage.Get(checksumPath)
-		if err != nil {
+		if err == nil {
 			headers["X-Docker-Checksum"] = []string{string(checksum)}
 		}
 	}
@@ -243,7 +243,7 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	}
 	// check if image json exists
 	if exists, _ := a.Storage.Exists(storage.ImageJsonPath(imageID)); !exists {
-		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
 	markPath := storage.ImageMarkPath(imageID)
