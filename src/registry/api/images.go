@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"strconv"
 )
 
 const COOKIE_SEPARATOR = "|"
@@ -67,46 +68,43 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	sha256Writer := sha256.New()
 	sha256Writer.Write(jsonContent)
 	teeReader := io.TeeReader(r.Body, sha256Writer)
-	// this will create the checksums for a tar and the json for tar file info
+
 	tarInfo := layers.NewTarInfo()
+	// this will create the checksums for a tar and the json for tar file info
+	// tarInfo := layers.NewTarInfo()
 	// PutReader takes a function that will run after the write finishes:
 	err = a.Storage.PutReader(layerPath, teeReader, tarInfo.Load)
 	if err != nil {
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	checksums := map[string]bool{"sha256:" + hex.EncodeToString(sha256Writer.Sum(nil)): true}
-	if tarInfo.Error == nil {
-		filesJson, err := tarInfo.TarFilesInfo.Json()
-		if err != nil {
-			a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
-			return
-		}
-		layers.SetImageFilesCache(a.Storage, imageID, filesJson)
-		checksums[tarInfo.TarSum.Compute(jsonContent)] = true
-	}
 
-	storedSum, err := a.Storage.Get(storage.ImageChecksumPath(imageID))
-	if err == nil {
-		cookieString := ""
-		for sum, _ := range checksums {
-			cookieString += sum + COOKIE_SEPARATOR
-		}
-		cookieString = strings.TrimSuffix(cookieString, COOKIE_SEPARATOR)
-		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: cookieString})
-		a.response(w, true, http.StatusOK, EMPTY_HEADERS)
-		return
-	}
-	if !checksums[string(storedSum)] {
-		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum:"+string(storedSum)+" not in %#v", checksums)
-		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
-	if err := a.Storage.Remove(markPath); err != nil {
-		logger.Debug("[PutImageLayer]["+imageID+"] Error removing mark path: %s", err.Error())
-		a.response(w, "Internal Error", http.StatusInternalServerError, EMPTY_HEADERS)
-		return
-	}
+	checksums := []string{"sha256:" + hex.EncodeToString(sha256Writer.Sum(nil))}
+
+  docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+  if err != nil {
+    a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+    return
+  }
+  version_numbers := strings.Split(docker_version, ".")
+  if version_numbers[0] < "1" {
+    if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+
+  		if tarInfo.Error == nil {
+				filesJson, err := tarInfo.TarFilesInfo.Json()
+				if err != nil {
+					a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+					return
+				}
+				layers.SetImageFilesCache(a.Storage, imageID, filesJson)
+			}
+			// computing tarsum even if tarinfo.Error is nil as per python docker-registry
+			tarsum := tarInfo.TarSum.Compute(jsonContent)
+			checksums = append(checksums, tarsum)
+    }
+  }
+
+  layers.StoreChecksum(a.Storage, imageID, checksums)
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
@@ -128,7 +126,21 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
 		checksum, _ := a.Storage.Get(checksumPath)
+		// header checksum for docker >= 0.10
 		headers["X-Docker-Checksum-Payload"] = []string{string(checksum)}
+
+		// check and compute header checksum for docker < 0.10
+		docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+	  if err != nil {
+	    a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+	    return
+	  }
+	  version_numbers := strings.Split(docker_version, ".")
+	  if version_numbers[0] < "1" {
+	    if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+	    	headers["X-Docker-Checksum"] = string(checksum)
+	    }
+	  }
 	}
 	a.response(w, data, http.StatusOK, headers)
 }
@@ -215,19 +227,37 @@ func (a *RegistryAPI) GetImageAncestryHandler(w http.ResponseWriter, r *http.Req
 	a.response(w, data, http.StatusOK, headers)
 }
 
+func loadChecksums(a *RegistryAPI, imageID string) []string {
+	var data []string
+	checksumPath := storage.ImageChecksumPath(imageID)
+	if exists, _ := a.Storage.Exists(checksumPath); exists {
+		content, _ := a.Storage.Get(checksumPath)
+		json.Unmarshal(content, &data)
+	}
+	return data
+}
+
 func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
+
+	checksum := r.Header.Get("X-Docker-Checksum-Payload")
+	// compute checksum for docker < 0.10
+	docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+  if err != nil {
+    a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+    return
+  }
+  version_numbers := strings.Split(docker_version, ".")
+  if version_numbers[0] < "1" {
+    if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+    	checksum = r.Header.Get("X-Docker-Checksum")
+    }
+  }
+
 	// read header
-	checksum := r.Header.Get("X-Docker-Checksum")
 	if checksum == "" {
 		a.response(w, "Missing Image's checksum", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
-	// read cookie
-	checksumCookie, err := r.Cookie("checksum")
-	if err != nil {
-		a.response(w, "Checksum not found in Cookie", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
 	// check if image json exists
@@ -241,17 +271,18 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 		a.response(w, "Cannot set this image checksum (mark path does not exist)", http.StatusConflict, EMPTY_HEADERS)
 		return
 	}
-	err = layers.StoreChecksum(a.Storage, imageID, checksum)
-	// extract checksumCookie JSON
-	checksumMap := map[string]bool{}
-	for _, checksum := range strings.Split(checksumCookie.Value, COOKIE_SEPARATOR) {
-		checksumMap[checksum] = true
-	}
-	if !checksumMap[checksum] {
-		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum:"+checksum+" not in %#v", checksumMap)
-		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
+
+	checksums := loadChecksums(a, imageID)
+	fmt.Println("=========checksums", checksums)
+	// checksumMap := map[string]bool{}
+	// for _, checksum := range strings.Split(checksumCookie.Value, COOKIE_SEPARATOR) {
+	// 	checksumMap[checksum] = true
+	// }
+	// if !checksumMap[checksum] {
+	// 	logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum:"+checksum+" not in %#v", checksumMap)
+	// 	a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
+	// 	return
+	// }
 	a.Storage.Remove(markPath)
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
