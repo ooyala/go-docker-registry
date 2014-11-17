@@ -7,7 +7,6 @@ import (
 	"registry/storage"
 	"strings"
 	"regexp"
-	"fmt"
 )
 
 // this function takes both []byte and []map[string]interface{} to shortcut in some cases.
@@ -295,7 +294,6 @@ func fileInfoMap(s storage.Storage, imageID string) (map[string][]interface{}, e
 func DockerVersion(ua []string) (string, error) {
 	docker_version_pattern := "docker/([^\\s]+)"
 	re := regexp.MustCompile(docker_version_pattern)
-	fmt.Println("ua:", ua)
 	match := re.FindStringSubmatch(ua[0])
   if len(match) != 0 {
   	return match[1], nil
