@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"registry/layers"
-	"registry/logger"
-	"registry/storage"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"registry/layers"
+	"registry/logger"
+	"registry/storage"
 	"strings"
 )
 
