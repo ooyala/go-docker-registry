@@ -12,6 +12,7 @@ import (
 	"registry/layers"
 	"registry/logger"
 	"registry/storage"
+	"strconv"
 	"strings"
 )
 
@@ -75,38 +76,32 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 		a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
-	checksums := map[string]bool{"sha256:" + hex.EncodeToString(sha256Writer.Sum(nil)): true}
-	if tarInfo.Error == nil {
-		filesJson, err := tarInfo.TarFilesInfo.Json()
-		if err != nil {
-			a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
-			return
+
+	checksums := []string{"sha256:" + hex.EncodeToString(sha256Writer.Sum(nil))}
+
+	docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+	if err != nil {
+		a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+		return
+	}
+	version_numbers := strings.Split(docker_version, ".")
+	if version_numbers[0] < "1" {
+		if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+			if tarInfo.Error == nil {
+				filesJson, err := tarInfo.TarFilesInfo.Json()
+				if err != nil {
+					a.response(w, "Internal Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
+					return
+				}
+				layers.SetImageFilesCache(a.Storage, imageID, filesJson)
+			}
+			// computing tarsum even if tarinfo.Error is nil as per python docker-registry
+			tarsum := tarInfo.TarSum.Compute(jsonContent)
+			checksums = append(checksums, tarsum)
 		}
-		layers.SetImageFilesCache(a.Storage, imageID, filesJson)
-		checksums[tarInfo.TarSum.Compute(jsonContent)] = true
 	}
 
-	storedSum, err := a.Storage.Get(storage.ImageChecksumPath(imageID))
-	if err != nil {
-		cookieString := ""
-		for sum, _ := range checksums {
-			cookieString += sum + COOKIE_SEPARATOR
-		}
-		cookieString = strings.TrimSuffix(cookieString, COOKIE_SEPARATOR)
-		http.SetCookie(w, &http.Cookie{Name: "checksum", Value: cookieString})
-		a.response(w, true, http.StatusOK, EMPTY_HEADERS)
-		return
-	}
-	if !checksums[string(storedSum)] {
-		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum:"+string(storedSum)+" not in %#v", checksums)
-		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
-	if err := a.Storage.Remove(markPath); err != nil {
-		logger.Debug("[PutImageLayer]["+imageID+"] Error removing mark path: %s", err.Error())
-		a.response(w, "Internal Error", http.StatusInternalServerError, EMPTY_HEADERS)
-		return
-	}
+	layers.StoreChecksum(a.Storage, imageID, checksums)
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
 
