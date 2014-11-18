@@ -122,17 +122,13 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
-	size, err := a.Storage.Size(storage.ImageLayerPath(imageID))
-	if err == nil {
-		headers["X-Docker-Size"] = []string{fmt.Sprintf("%d", size)}
-	}
+	size, _ := a.Storage.Size(storage.ImageLayerPath(imageID))
+	headers["X-Docker-Size"] = []string{fmt.Sprintf("%d", size)}
 	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
-		checksum, err := a.Storage.Get(checksumPath)
-		if err != nil {
-			headers["X-Docker-Checksum"] = []string{string(checksum)}
-		}
+		checksum, _ := a.Storage.Get(checksumPath)
+		headers["X-Docker-Checksum"] = []string{string(checksum)}
 	}
 	a.response(w, data, http.StatusOK, headers)
 }
