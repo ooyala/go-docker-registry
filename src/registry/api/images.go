@@ -213,39 +213,44 @@ func (a *RegistryAPI) GetImageAncestryHandler(w http.ResponseWriter, r *http.Req
 func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	imageID := vars["imageID"]
-	// read header
-	checksum := r.Header.Get("X-Docker-Checksum")
+
+	checksum := r.Header.Get("X-Docker-Checksum-Payload")
+	// compute checksum for docker < 0.10
+	docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+	if err != nil {
+		a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+		return
+	}
+	version_numbers := strings.Split(docker_version, ".")
+	if version_numbers[0] < "1" {
+		if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+			checksum = r.Header.Get("X-Docker-Checksum")
+		}
+	}
+
 	if checksum == "" {
 		a.response(w, "Missing Image's checksum", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
-	// read cookie
-	checksumCookie, err := r.Cookie("checksum")
-	if err != nil {
-		a.response(w, "Checksum not found in Cookie", http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
 	// check if image json exists
 	if exists, _ := a.Storage.Exists(storage.ImageJsonPath(imageID)); !exists {
-		a.response(w, "Image not found: "+err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		a.response(w, "Image not found", http.StatusNotFound, EMPTY_HEADERS)
 		return
 	}
+
 	markPath := storage.ImageMarkPath(imageID)
 	if exists, _ := a.Storage.Exists(markPath); !exists {
 		a.response(w, "Cannot set this image checksum (mark path does not exist)", http.StatusConflict, EMPTY_HEADERS)
 		return
 	}
-	err = layers.StoreChecksum(a.Storage, imageID, checksum)
-	// extract checksumCookie JSON
-	checksumMap := map[string]bool{}
-	for _, checksum := range strings.Split(checksumCookie.Value, COOKIE_SEPARATOR) {
-		checksumMap[checksum] = true
-	}
-	if !checksumMap[checksum] {
-		logger.Debug("[PutImageChecksum]["+imageID+"] Wrong checksum:"+checksum+" not in %#v", checksumMap)
-		a.response(w, "Checksum mismatch", http.StatusBadRequest, EMPTY_HEADERS)
+
+	checksums := loadChecksums(a, imageID)
+	if !stringInSlice(checksum, checksums) {
+		logger.Debug("[PutImageLayer]["+imageID+"] Wrong checksum:"+string(checksum)+" not in %#v", checksums)
+		a.response(w, "Checksum mismatch, ignoring the layer", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
+
 	a.Storage.Remove(markPath)
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
 }
@@ -289,4 +294,23 @@ func (a *RegistryAPI) GetImageDiffHandler(w http.ResponseWriter, r *http.Request
 	}
 	// copied from docker-registry. not sure why we would return StatusOK when the cache missed...
 	a.response(w, diffJson, http.StatusOK, headers)
+}
+
+func loadChecksums(a *RegistryAPI, imageID string) []string {
+	var data []string
+	checksumPath := storage.ImageChecksumPath(imageID)
+	if exists, _ := a.Storage.Exists(checksumPath); exists {
+		content, _ := a.Storage.Get(checksumPath)
+		json.Unmarshal(content, &data)
+	}
+	return data
+}
+
+func stringInSlice(element string, list []string) bool {
+	for _, item := range list {
+		if item == element {
+			return true
+		}
+	}
+	return false
 }
