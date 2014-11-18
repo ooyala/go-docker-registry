@@ -122,8 +122,9 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	// docker-registry seems to not worry about errors that occur here. i guess we won't either.
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
+		var parsed_checksum []string
 		checksum, _ := a.Storage.Get(checksumPath)
-		parsed_checksum := []string{string(checksum)}
+		json.Unmarshal(checksum, &parsed_checksum)
 		headers["X-Docker-Checksum-Payload"] = parsed_checksum
 		// check and compute header checksum for docker < 0.10
 		docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
