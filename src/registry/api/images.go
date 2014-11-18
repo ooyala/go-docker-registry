@@ -123,7 +123,21 @@ func (a *RegistryAPI) GetImageJsonHandler(w http.ResponseWriter, r *http.Request
 	checksumPath := storage.ImageChecksumPath(imageID)
 	if exists, _ := a.Storage.Exists(checksumPath); exists {
 		checksum, _ := a.Storage.Get(checksumPath)
-		headers["X-Docker-Checksum"] = []string{string(checksum)}
+		parsed_checksum := []string{string(checksum)}
+		headers["X-Docker-Checksum-Payload"] = parsed_checksum
+		// check and compute header checksum for docker < 0.10
+		docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
+		if err != nil {
+			a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
+			return
+		}
+		version_numbers := strings.Split(docker_version, ".")
+		if version_numbers[0] < "1" {
+			if minor, _ := strconv.Atoi(version_numbers[1]); minor < 10 {
+				headers["X-Docker-Checksum"] = parsed_checksum
+				delete(headers, "X-Docker-Checksum-Payload")
+			}
+		}
 	}
 	a.response(w, data, http.StatusOK, headers)
 }
