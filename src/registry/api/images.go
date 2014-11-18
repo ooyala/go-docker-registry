@@ -158,15 +158,6 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Invalid JSON: 'id' is not a string", http.StatusBadRequest, EMPTY_HEADERS)
 		return
 	}
-	// only time checksum won't exist is if a PutImage request failed and we're retrying
-	checksum := r.Header.Get("X-Docker-Checksum")
-	if checksum == "" {
-		// remove the old checksum in case it's a retry after a fail
-		a.Storage.Remove(storage.ImageChecksumPath(imageID))
-	} else if err := layers.StoreChecksum(a.Storage, imageID, checksum); err != nil {
-		a.response(w, err.Error(), http.StatusBadRequest, EMPTY_HEADERS)
-		return
-	}
 	if imageID != dataID {
 		a.response(w, "JSON image id != image id specified in path", http.StatusBadRequest, EMPTY_HEADERS)
 		return
@@ -196,6 +187,8 @@ func (a *RegistryAPI) PutImageJsonHandler(w http.ResponseWriter, r *http.Request
 		a.response(w, "Put Mark Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
 		return
 	}
+	// We cleanup any old checksum in case it's a retry after a fail
+	a.Storage.Remove(storage.ImageChecksumPath(imageID))
 	err = a.Storage.Put(jsonPath, bodyBytes)
 	if err != nil {
 		a.response(w, "Put Json Error: "+err.Error(), http.StatusInternalServerError, EMPTY_HEADERS)
