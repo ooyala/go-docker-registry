@@ -3,6 +3,7 @@ package layers
 import (
 	"encoding/json"
 	"errors"
+	"regexp"
 	"registry/logger"
 	"registry/storage"
 	"strings"
@@ -282,4 +283,14 @@ func fileInfoMap(s storage.Storage, imageID string) (map[string][]interface{}, e
 		}
 	}
 	return m, nil
+}
+
+func DockerVersion(ua []string) (string, error) {
+	docker_version_pattern := "docker/([^\\s]+)"
+	re := regexp.MustCompile(docker_version_pattern)
+	match := re.FindStringSubmatch(ua[0])
+	if len(match) != 0 {
+		return match[1], nil
+	}
+	return "", errors.New("Cannot parse Docker version")
 }
