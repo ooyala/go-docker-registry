@@ -96,3 +96,9 @@ func RepoIndexImagesPath(namespace, repo string) string {
 func RepoPrivatePath(namespace, repo string) string {
 	return fmt.Sprintf("repositories/%s/_private", path.Join(namespace, repo))
 }
+
+func RepoTagJsonPath(namespace, repo, tag string) string {
+	tag = "tag" + tag + "_json"
+	return fmt.Sprintf("repositories/%s", path.Join(namespace, repo, tag))
+
+}
