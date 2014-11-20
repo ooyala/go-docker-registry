@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"github.com/cespare/go-apachelog"
 	"github.com/gorilla/mux"
-	"registry/storage"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
+	"registry/storage"
 )
 
 var USER_AGENT_REGEXP = regexp.MustCompile("([^\\s/]+)/([^\\s/]+)")
@@ -66,6 +66,7 @@ func (a *RegistryAPI) ListenAndServe() error {
 	r.HandleFunc("/v1/repositories/{repo}/tags/{tag}", a.DeleteRepoTagHandler).Methods("DELETE")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags", a.GetRepoTagsHandler).Methods("GET")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags/{tag}", a.GetRepoTagHandler).Methods("GET")
+	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags/{tag}/json", a.GetRepoTagsJsonHandler).Methods("GET")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags/{tag}", a.PutRepoTagHandler).Methods("PUT")
 	r.HandleFunc("/v1/repositories/{namespace}/{repo}/tags/{tag}", a.DeleteRepoTagHandler).Methods("DELETE")
 	// Undocumented but implemented in docker-registry 0.6.5
