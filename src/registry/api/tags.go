@@ -89,20 +89,20 @@ func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 		a.internalError(w, err.Error())
 		return
 	}
+	uaStrings := r.Header["User-Agent"]
+	uaString := ""
+	if len(uaStrings) > 0 {
+		// just use the first one. there *should* only be one to begin with.
+		uaString = uaStrings[0]
+	}
+	dataMap := CreateRepoJson(uaString)
+	jsonData, err := json.Marshal(&dataMap)
+	if err != nil {
+		a.internalError(w, err.Error())
+		return
+	}
+	a.Storage.Put(storage.RepoTagJsonPath(namespace, repo, tag), jsonData)
 	if tag == "latest" {
-		// write some metadata about the repos
-		uaStrings := r.Header["User-Agent"]
-		uaString := ""
-		if len(uaStrings) > 0 {
-			// just use the first one. there *should* only be one to begin with.
-			uaString = uaStrings[0]
-		}
-		dataMap := CreateRepoJson(uaString)
-		jsonData, err := json.Marshal(&dataMap)
-		if err != nil {
-			a.internalError(w, err.Error())
-			return
-		}
 		a.Storage.Put(storage.RepoJsonPath(namespace, repo), jsonData)
 	}
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
@@ -149,7 +149,7 @@ func CreateRepoJson(userAgent string) map[string]interface{} {
 		}
 		uaMap[match[1]] = match[2]
 	}
-	if val, exists := uaMap["docker_version"]; exists {
+	if val, exists := uaMap["docker"]; exists {
 		props["docker_version"] = val
 	}
 	if val, exists := uaMap["go"]; exists {
