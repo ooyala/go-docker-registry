@@ -178,7 +178,7 @@ func (a *RegistryAPI) DeleteRepoHandler(w http.ResponseWriter, r *http.Request) 
 	return
 }
 
-func (a *RegistryAPI) GetRepoTagsJsonHandler(w http.ResponseWriter, r *http.Request) {
+func (a *RegistryAPI) GetRepoTagJsonHandler(w http.ResponseWriter, r *http.Request) {
 	namespace, repo, tag := parseRepo(r, "tag")
 	data := map[string]string{
 		"last_update":       "",
