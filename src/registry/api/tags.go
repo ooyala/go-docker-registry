@@ -168,10 +168,14 @@ func CreateRepoJson(userAgent string) map[string]interface{} {
 }
 
 func (a *RegistryAPI) DeleteRepoHandler(w http.ResponseWriter, r *http.Request) {
-	//namespace, repo, _ := parseRepo(r, "")
-	// not yet implemented in docker-registry.
-	// TODO[jigish] implement this
-	NotImplementedHandler(w, r)
+	namespace, repo, _ := parseRepo(r, "")
+	err := a.Storage.RemoveAll(storage.RepoPath(namespace,repo))
+	if err != nil{
+		a.response(w, err.Error(), http.StatusNotFound, EMPTY_HEADERS)
+		return
+	}
+	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
+	return
 }
 
 func (a *RegistryAPI) GetRepoTagsJsonHandler(w http.ResponseWriter, r *http.Request) {

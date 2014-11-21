@@ -100,5 +100,8 @@ func RepoPrivatePath(namespace, repo string) string {
 func RepoTagJsonPath(namespace, repo, tag string) string {
 	tag = "tag" + tag + "_json"
 	return fmt.Sprintf("repositories/%s", path.Join(namespace, repo, tag))
+}
 
+func RepoPath(namespace, repo string) string {
+	return fmt.Sprintf("repositories/%s", path.Join(namespace, repo))
 }
