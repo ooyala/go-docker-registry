@@ -1,5 +1,5 @@
 #!/bin/bash
 
 if [ "$1" != "upgrade" ]; then
-  rm -rf /opt/atlantis/registry
+  rm -rf /opt/go-docker-registry
 fi
