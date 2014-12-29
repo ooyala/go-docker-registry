@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"registry/logger"
-	"registry/storage"
 	"io/ioutil"
 	"net/http"
 	"path"
+	"registry/logger"
+	"registry/storage"
 	"strings"
 	"time"
 )
@@ -89,20 +89,20 @@ func (a *RegistryAPI) PutRepoTagHandler(w http.ResponseWriter, r *http.Request) 
 		a.internalError(w, err.Error())
 		return
 	}
+	uaStrings := r.Header["User-Agent"]
+	uaString := ""
+	if len(uaStrings) > 0 {
+		// just use the first one. there *should* only be one to begin with.
+		uaString = uaStrings[0]
+	}
+	dataMap := CreateRepoJson(uaString)
+	jsonData, err := json.Marshal(&dataMap)
+	if err != nil {
+		a.internalError(w, err.Error())
+		return
+	}
+	a.Storage.Put(storage.RepoTagJsonPath(namespace, repo, tag), jsonData)
 	if tag == "latest" {
-		// write some metadata about the repos
-		uaStrings := r.Header["User-Agent"]
-		uaString := ""
-		if len(uaStrings) > 0 {
-			// just use the first one. there *should* only be one to begin with.
-			uaString = uaStrings[0]
-		}
-		dataMap := CreateRepoJson(uaString)
-		jsonData, err := json.Marshal(&dataMap)
-		if err != nil {
-			a.internalError(w, err.Error())
-			return
-		}
 		a.Storage.Put(storage.RepoJsonPath(namespace, repo), jsonData)
 	}
 	a.response(w, true, http.StatusOK, EMPTY_HEADERS)
@@ -149,7 +149,7 @@ func CreateRepoJson(userAgent string) map[string]interface{} {
 		}
 		uaMap[match[1]] = match[2]
 	}
-	if val, exists := uaMap["docker_version"]; exists {
+	if val, exists := uaMap["docker"]; exists {
 		props["docker_version"] = val
 	}
 	if val, exists := uaMap["go"]; exists {
@@ -172,4 +172,23 @@ func (a *RegistryAPI) DeleteRepoHandler(w http.ResponseWriter, r *http.Request) 
 	// not yet implemented in docker-registry.
 	// TODO[jigish] implement this
 	NotImplementedHandler(w, r)
+}
+
+func (a *RegistryAPI) GetRepoTagsJsonHandler(w http.ResponseWriter, r *http.Request) {
+	namespace, repo, tag := parseRepo(r, "tag")
+	data := map[string]string{
+		"last_update":       "",
+		"docker_version":    "",
+		"docker_go_version": "",
+		"arch":              "amd64",
+		"os":                "linux",
+		"kernel":            "",
+	}
+	content, err := a.Storage.Get(storage.RepoTagJsonPath(namespace, repo, tag))
+	if err != nil {
+		a.response(w, data, http.StatusNotFound, EMPTY_HEADERS)
+		return
+	}
+	a.response(w, content, http.StatusOK, EMPTY_HEADERS)
+	return
 }

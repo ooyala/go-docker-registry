@@ -3,6 +3,7 @@ package layers
 import (
 	"encoding/json"
 	"errors"
+	"regexp"
 	"registry/logger"
 	"registry/storage"
 	"strings"
@@ -97,12 +98,18 @@ func GetImageFilesJson(s storage.Storage, imageID string) ([]byte, error) {
 	return tarFilesInfo.Json()
 }
 
-func StoreChecksum(s storage.Storage, imageID, checksum string) error {
-	parts := strings.Split(checksum, ":")
-	if len(parts) != 2 {
-		return errors.New("Invalid checksum format")
+func StoreChecksum(s storage.Storage, imageID string, checksums []string) error {
+	for _, checksum := range checksums {
+		parts := strings.Split(checksum, ":")
+		if len(parts) != 2 {
+			return errors.New("Invalid checksum format")
+		}
 	}
-	return s.Put(storage.ImageChecksumPath(imageID), []byte(checksum))
+	content, err := json.Marshal(checksums)
+	if err != nil {
+		return err
+	}
+	return s.Put(storage.ImageChecksumPath(imageID), content)
 }
 
 func GenerateAncestry(s storage.Storage, imageID, parentID string) (err error) {
@@ -282,4 +289,14 @@ func fileInfoMap(s storage.Storage, imageID string) (map[string][]interface{}, e
 		}
 	}
 	return m, nil
+}
+
+func DockerVersion(ua []string) (string, error) {
+	docker_version_pattern := "docker/([^\\s]+)"
+	re := regexp.MustCompile(docker_version_pattern)
+	match := re.FindStringSubmatch(ua[0])
+	if len(match) != 0 {
+		return match[1], nil
+	}
+	return "", errors.New("Cannot parse Docker version")
 }
