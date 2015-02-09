@@ -2,8 +2,8 @@
 
 kill_registry() {
   echo "killing registry..."
-  sv down atlantis-registry
-  rm /etc/service/atlantis-registry
+  sv down go-docker-registry
+  rm /etc/service/go-docker-registry
   i=0
   while [ "$(pidof registry)" ] && [ $i -lt 5 ]; do
     echo "waiting for registry to die..."
@@ -17,6 +17,6 @@ kill_registry() {
   echo "registry killed."
 }
 
-if [ -L '/etc/service/atlantis-registry' ]; then
+if [ -L '/etc/service/go-docker-registry' ]; then
   kill_registry
 fi
