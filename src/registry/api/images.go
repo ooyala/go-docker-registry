@@ -67,6 +67,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	// storage and checksum each individual file within it (and checksum those checksums with the jsonContent)
 	sha256Writer := sha256.New()
 	sha256Writer.Write(jsonContent)
+	sha256Writer.Write([]byte("\n"))
 	teeReader := io.TeeReader(r.Body, sha256Writer)
 	// this will create the checksums for a tar and the json for tar file info
 	tarInfo := layers.NewTarInfo()
