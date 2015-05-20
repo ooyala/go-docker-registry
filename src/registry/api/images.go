@@ -66,7 +66,7 @@ func (a *RegistryAPI) PutImageLayerHandler(w http.ResponseWriter, r *http.Reques
 	// simultaneously writing what it read to sha256Writer. tarInfo will read the tar after it is put into the
 	// storage and checksum each individual file within it (and checksum those checksums with the jsonContent)
 	sha256Writer := sha256.New()
-	sha256Writer.Write(jsonContent)
+	sha256Writer.Write(append(jsonContent, '\n'))
 	teeReader := io.TeeReader(r.Body, sha256Writer)
 	// this will create the checksums for a tar and the json for tar file info
 	tarInfo := layers.NewTarInfo()
@@ -242,6 +242,10 @@ func (a *RegistryAPI) PutImageChecksumHandler(w http.ResponseWriter, r *http.Req
 	imageID := vars["imageID"]
 
 	checksum := r.Header.Get("X-Docker-Checksum-Payload")
+
+	logger.Debug("X-Docker-Checksum-Payload " + checksum)
+	logger.Debug("X-Docker-Checksum " + r.Header.Get("X-Docker-Checksum"))
+
 	// compute checksum for docker < 0.10
 	docker_version, err := layers.DockerVersion(r.Header["User-Agent"])
 	if err != nil {
