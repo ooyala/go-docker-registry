@@ -1,4 +1,4 @@
 gom 'github.com/cespare/go-apachelog', :commit => 'bd03c773db22297a309ba6c24b872f51466c6a8d'
-gom 'github.com/crowdmob/goamz/aws', :commit => 'eb89d3d33a534c9798186bfec193274a643fb60f'
-gom 'github.com/crowdmob/goamz/s3', :commit => 'eb89d3d33a534c9798186bfec193274a643fb60f'
+gom 'github.com/crowdmob/goamz/aws', :commit => '8c1f9c953b0176803763cb911326e7aad9f02b5b'
+gom 'github.com/crowdmob/goamz/s3', :commit => '8c1f9c953b0176803763cb911326e7aad9f02b5b'
 gom 'github.com/gorilla/mux', :commit => '9ede152210fa25c1377d33e867cb828c19316445'
