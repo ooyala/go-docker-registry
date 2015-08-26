@@ -11,10 +11,6 @@ GOM := $(VENDOR_PATH)/bin/gom
 GOM_VENDOR_NAME := vendor
 export GOM_VENDOR_NAME
 
-PKGS := github.com/cespare/go-apachelog
-PKGS += github.com/crowdmob/goamz/aws
-PKGS += github.com/crowdmob/goamz/s3
-
 all: build
 
 clean:
