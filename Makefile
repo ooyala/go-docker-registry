@@ -7,6 +7,10 @@ PROJECT_NAME := $(shell pwd | xargs basename)
 GOPATH := $(GOPATH):$(PROJECT_ROOT):$(VENDOR_PATH)
 export GOPATH
 
+GOM := $(VENDOR_PATH)/bin/gom
+GOM_VENDOR_NAME := vendor
+export GOM_VENDOR_NAME
+
 PKGS := github.com/cespare/go-apachelog
 PKGS += github.com/crowdmob/goamz/aws
 PKGS += github.com/crowdmob/goamz/s3
@@ -14,19 +18,23 @@ PKGS += github.com/crowdmob/goamz/s3
 all: build
 
 clean:
-	@rm -rf bin pkg $(VENDOR_PATH)/bin $(VENDOR_PATH)/pkg *.deb
+	@rm -rf bin pkg $(VENDOR_PATH) *.deb
 
-init: clean
+$(VENDOR_PATH):
+	@echo "Installing Dependencies..."
+	@mkdir -p $(VENDOR_PATH) || exit 2
+	@GOPATH=$(VENDOR_PATH) go get github.com/ghao-ooyala/gom
+	$(GOM) install
+	@echo "Done."
+
+init: clean $(VENDOR_PATH)
 	@mkdir bin
 
-build: init pkgs
+build: init
 	@go build -o bin/registry registry.go
 
-.PHONY: pkgs
-pkgs:
-	for p in $(PKGS); do go install $$p; done
 
-test: clean
+test: init
 ifdef TEST_PACKAGE
 	@echo "Testing $$TEST_PACKAGE..."
 	@go test -cover $$TEST_FLAGS $$TEST_PACKAGE
