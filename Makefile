@@ -35,7 +35,7 @@ ifdef TEST_PACKAGE
 	@echo "Testing $$TEST_PACKAGE..."
 	@go test -cover $$TEST_FLAGS $$TEST_PACKAGE
 else
-	@for p in `find ./src -type f -name "*.go" |sed 's-\./src/\(.*\)/.*-\1-' |sort -u`; do \
+	@for p in `find ./src -type f -name "*_test.go" |sed 's-\./src/\(.*\)/.*-\1-' |sort -u`; do \
 		echo "Testing $$p..."; \
 		go test -cover $$TEST_FLAGS $$p || exit 1; \
 	done
